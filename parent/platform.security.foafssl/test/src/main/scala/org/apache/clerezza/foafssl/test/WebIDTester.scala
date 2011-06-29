@@ -35,7 +35,6 @@ import org.apache.clerezza.platform.security.auth.WebIdPrincipal
 import org.apache.clerezza.foafssl.auth.{WebIDClaim, Verification, X509Claim}
 import java.util.Date
 import org.apache.clerezza.rdf.scala.utils.Preamble.{toRichGraphNode,toFirstElement}
-import org.apache.clerezza.rdf.scala.utils.{CollectedIter, EasyGraphNode, EasyGraph, RichGraphNode}
 import serializedform.Serializer
 import java.io.ByteArrayOutputStream
 import org.apache.clerezza.rdf.scala.utils.EasyGraph._
@@ -44,6 +43,7 @@ import collection.mutable.{Queue, LinkedList}
 import javax.security.auth.Subject
 import collection.JavaConversions._
 import org.apache.clerezza.platform.users.WebIdGraphsService
+import org.apache.clerezza.rdf.scala.utils._
 
 
 /**
@@ -123,7 +123,7 @@ class WebIDTester {
 class CertTester(subj: Subject, webIdGraphsService: WebIdGraphsService) extends Assertor {
 
 	import EARL.{passed, failed, cantTell, untested, inapplicable}
-
+	import EzStyleChoice.unicode
 
 	val creds: scala.collection.mutable.Set[X509Claim] = subj.getPublicCredentials(classOf[X509Claim]);
 	val now = new Date()
