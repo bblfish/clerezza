@@ -602,7 +602,7 @@ class CertTester(subj: Subject, webIdGraphsService: WebIdGraphsService) extends 
 			sout.serialize(out, graph, "text/rdf+n3")
 			val n3String = out.toString("UTF-8")
 			//todo: turtle mime type literal?
-			val keylit: EasyGraphNode = g.bnode ⟝  OWL.sameAs ⟶ (n3String^^"http://example.com/turtle".uri)
+			val keylit: EzGraphNode = g.bnode ⟝  OWL.sameAs ⟶ (n3String^^"http://example.com/turtle".uri)
 
 
 			//
@@ -709,7 +709,7 @@ class Assertor {
 			new TstResult
 		}
 
-		def toRdf(): EasyGraphNode = (
+		def toRdf(): EzGraphNode = (
 			g.bnode ∈ EARL.Assertion
 				⟝ EARL.test ⟶ testName
 				⟝ EARL.result ⟶ result.toRdf()
@@ -741,7 +741,7 @@ class Assertor {
 		}
 
 
-		def toRdf(): EasyGraphNode =  (
+		def toRdf(): EzGraphNode =  (
 				g.bnode ∈ EARL.TestResult
 					⟝ DC.description ⟶ description
 					⟝ EARL.outcome ⟶ outcome
