@@ -694,7 +694,7 @@ class Assertor {
 		for (test <- assertions) {
 			test.toRdf()
 		}
-		g
+		g.graph
 	}
 
 	class Assertion(testName: UriRef,
