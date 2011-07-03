@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<components xmlns:scr="http://www.osgi.org/xmlns/scr/v1.0.0">
+    <scr:component enabled="true" name="org.apache.clerezza.foafssl.idp.IdentityProvider" immediate="true">
+        <implementation class="org.apache.clerezza.foafssl.idp.IdentityProvider"/>
+        <service servicefactory="false">
+            <provide interface="java.lang.Object"/>
+        </service>
+        <property name="service.pid" value="org.apache.clerezza.foafssl.idp.IdentityProvider"/>
+        <property name="javax.ws.rs" type="Boolean" value="true"/>
+    </scr:component>
+    <scr:component enabled="true" name="org.apache.clerezza.foafssl.idp.pages.WebIDProviderPg">
+        <implementation class="org.apache.clerezza.foafssl.idp.pages.WebIDProviderPg"/>
+        <service servicefactory="false">
+            <provide interface="org.apache.clerezza.platform.typerendering.TypeRenderlet"/>
+        </service>
+        <property name="service.pid" value="org.apache.clerezza.foafssl.idp.pages.WebIDProviderPg"/>
+    </scr:component>
+    <scr:component enabled="true" name="org.apache.clerezza.foafssl.idp.pages.ProfileSelectorPg">
+        <implementation class="org.apache.clerezza.foafssl.idp.pages.ProfileSelectorPg"/>
+        <service servicefactory="false">
+            <provide interface="org.apache.clerezza.platform.typerendering.TypeRenderlet"/>
+        </service>
+        <property name="service.pid" value="org.apache.clerezza.foafssl.idp.pages.ProfileSelectorPg"/>
+    </scr:component>
+</components>
