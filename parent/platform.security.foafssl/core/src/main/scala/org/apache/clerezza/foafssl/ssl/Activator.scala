@@ -72,7 +72,7 @@ object Activator {
 
 class Activator() {
 	import Activator._
-	
+
 	var x509TrustManagerWrapperService: X509TrustManagerWrapperService = null;
 	protected def bindX509TrustManagerWrapperService(s: X509TrustManagerWrapperService)  = {
 		x509TrustManagerWrapperService = s
@@ -106,8 +106,8 @@ class Activator() {
 	}
 	
 	
+	
 
-
-}
+		}
 
 
