@@ -35,70 +35,70 @@
 
 	<dependencies>
         <dependency>
+            <groupId>org.apache.clerezza</groupId>
+            <artifactId>platform.security.foafssl.ontologies</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.clerezza</groupId>
+            <artifactId>rdf.core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.clerezza</groupId>
+            <artifactId>platform</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.clerezza</groupId>
+            <artifactId>platform.typerendering.core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.clerezza</groupId>
+            <artifactId>platform.typerendering.scalaserverpages</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.clerezza</groupId>
+            <artifactId>rdf.scala.utils</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.clerezza</groupId>
+            <artifactId>platform.security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.clerezza</groupId>
+            <artifactId>platform.users.core</artifactId>
+        </dependency>
+        <dependency>
             <groupId>javax.ws.rs</groupId>
             <artifactId>jsr311-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-library</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.jsslutils</groupId>
+            <artifactId>jsslutils</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.wymiwyg</groupId>
+            <artifactId>jetty-osgi-httpservice</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.clerezza</groupId>
             <artifactId>jaxrs.utils</artifactId>
         </dependency>
-		<dependency>
-			<groupId>org.apache.clerezza</groupId>
-			<artifactId>platform.security.foafssl.ontologies</artifactId>
-		</dependency>
         <dependency>
             <groupId>org.apache.clerezza</groupId>
             <artifactId>platform.security.foafssl.core</artifactId>
         </dependency>
-		<dependency>
-			<groupId>org.apache.clerezza</groupId>
-			<artifactId>rdf.core</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.clerezza</groupId>
-			<artifactId>platform</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.clerezza</groupId>
-			<artifactId>platform.typerendering.core</artifactId>
-		</dependency>
         <dependency>
             <groupId>org.apache.clerezza</groupId>
             <artifactId>platform.typerendering.scala</artifactId>
         </dependency>
-		<dependency>
-			<groupId>org.apache.clerezza</groupId>
-			<artifactId>platform.typerendering.scalaserverpages</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.clerezza</groupId>
-			<artifactId>rdf.scala.utils</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.clerezza</groupId>
-			<artifactId>platform.security</artifactId>
-		</dependency>
-        <dependency>
-            <groupId>org.apache.clerezza</groupId>
-            <artifactId>platform.users.core</artifactId>
-        </dependency>
-		<dependency>
-			<groupId>org.scala-lang</groupId>
-			<artifactId>scala-library</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.jsslutils</groupId>
-			<artifactId>jsslutils</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.wymiwyg</groupId>
-			<artifactId>jetty-osgi-httpservice</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>junit</groupId>
-			<artifactId>junit</artifactId>
-			<scope>test</scope>
-		</dependency>
 	</dependencies>
 
 	<build>

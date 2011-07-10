@@ -28,9 +28,50 @@ import org.osgi.framework.BundleContext;
 import org.osgi.service.component.ComponentContext
 import org.wymiwyg.jetty.httpservice.{Activator => ServiceActivator}
 
+object Activator {
+
+
+
+	def getKeyStoreType(context: BundleContext) = {
+		val property = context.getProperty(ServiceActivator.CONTEXT_PROPERTY_KEYSTORE_TYPE);
+		if (property != null) {
+			property;
+		} else {
+			"JKS"
+		}
+	}
+
+	def getKeyStorePath(context: BundleContext) = {
+		val property = context.getProperty(ServiceActivator.CONTEXT_PROPERTY_KEYSTORE_PATH);
+		if (property != null) {
+			property;
+		} else {
+			new File(new File(System.getProperty("user.home")), ".keystore").getAbsolutePath
+		}
+	}
+
+	//todo: should check what apps can get access to this. Is it properly protected?
+	def getKeyStorePassword(context: BundleContext) = {
+		val property = context.getProperty(ServiceActivator.CONTEXT_PROPERTY_KEYSTORE_PASSWORD);
+		if (property != null) {
+			property;
+		} else {
+			"password";
+		}
+	}
+
+	def getServerCertKeyStore(bundleContext: BundleContext): KeyStore = {
+		val keyStoreLoader = new KeyStoreLoader
+		keyStoreLoader.setKeyStoreType(getKeyStoreType(bundleContext))
+		keyStoreLoader.setKeyStorePath(getKeyStorePath(bundleContext))
+		keyStoreLoader.setKeyStorePassword(getKeyStorePassword(bundleContext))
+        return keyStoreLoader.loadKeyStore();
+    }
+
+}
 
 class Activator() {
-
+	import Activator._
 	
 	var x509TrustManagerWrapperService: X509TrustManagerWrapperService = null;
 	protected def bindX509TrustManagerWrapperService(s: X509TrustManagerWrapperService)  = {
@@ -47,9 +88,9 @@ class Activator() {
       val http = bundleContext.getProperty("org.osgi.service.http.secure.enabled")
       if (http!=null && "true".equals(http)) {
         val sslContextFactory = new X509SSLContextFactory(
-                    getServerCertKeyStore(context),
+                    getServerCertKeyStore(bundleContext),
 			        getKeyStorePassword(bundleContext),
-                    getServerCertKeyStore(context));//getCaKeyStore());
+                    getServerCertKeyStore(bundleContext));//getCaKeyStore());
             sslContextFactory
                     .setTrustManagerWrapper(x509TrustManagerWrapperService);
   
@@ -65,41 +106,7 @@ class Activator() {
 	}
 	
 	
-	def getServerCertKeyStore(context: ComponentContext): KeyStore = {
-		val bundleContext = context.getBundleContext
-		val keyStoreLoader = new KeyStoreLoader
-		keyStoreLoader.setKeyStoreType(getKeyStoreType(bundleContext))
-		keyStoreLoader.setKeyStorePath(getKeyStorePath(bundleContext))
-		keyStoreLoader.setKeyStorePassword(getKeyStorePassword(bundleContext))
-        return keyStoreLoader.loadKeyStore();
-    }
-	
-	protected def getKeyStoreType(context: BundleContext) = {
-		val property = context.getProperty(ServiceActivator.CONTEXT_PROPERTY_KEYSTORE_TYPE);
-		if (property != null) {
-			property;
-		} else {
-			"JKS"
-		}
-	}
 
-	protected def getKeyStorePath(context: BundleContext) = {
-		val property = context.getProperty(ServiceActivator.CONTEXT_PROPERTY_KEYSTORE_PATH);
-		if (property != null) {
-			property;
-		} else {
-			new File(new File(System.getProperty("user.home")), ".keystore").getAbsolutePath
-		}
-	}
-
-	protected def getKeyStorePassword(context: BundleContext) = {
-		val property = context.getProperty(ServiceActivator.CONTEXT_PROPERTY_KEYSTORE_PASSWORD);
-		if (property != null) {
-			property;
-		} else {
-			"password";
-		}
-	}
 
 }
 

@@ -21,16 +21,13 @@ package org.apache.clerezza.foafssl.idp
 
 import org.slf4j.scala.Logging
 import java.text.SimpleDateFormat
-import java.util.Calendar
-import org.osgi.service.component.ComponentContext
 import java.security.cert._
-import org.apache.clerezza.rdf.core.UriRef
 import org.apache.clerezza.foafssl.ontologies.{RSA, WEBIDPROVIDER, CERT}
 import java.security.interfaces.{RSAPrivateKey, RSAPublicKey}
 import collection.immutable.StringOps
 import org.apache.clerezza.rdf.scala.utils.EasyGraph
 import javax.ws.rs._
-import core.Response
+import core.{MultivaluedMap, UriInfo, Context, Response}
 import org.apache.clerezza.platform.security.UserUtil
 import org.apache.clerezza.platform.security.auth.WebIdPrincipal
 import java.net.{URL, URLEncoder}
@@ -40,6 +37,15 @@ import org.apache.clerezza.jaxrs.utils.RedirectUtil
 import collection.mutable.Set
 import org.apache.clerezza.rdf.ontologies.FOAF
 import org.apache.clerezza.rdf.utils.GraphNode
+import org.osgi.service.component.ComponentContext
+import javax.xml.ws.RequestWrapper
+import org.apache.clerezza.utils.Uri
+import org.apache.clerezza.rdf.core.UriRef
+import java.lang.reflect.Constructor
+import java.lang.Boolean
+import com.sun.xml.internal.bind.v2.model.annotation.AnnotationSource
+import java.util.{List, Calendar}
+import apple.laf.JRSUIState.ValueState
 
 
 /**
@@ -75,15 +81,15 @@ class IdentityProvider extends Logging {
 
 		private def publicKeyGrph = (
 			eg.bnode ∈ RSA.RSAPublicKey
-			⟝ RSA.modulus ⟶ { val pkstr = pubKey.getModulus.toString(16)
-			            new StringOps(if (pkstr.size % 2 == 0) pkstr else " "+pkstr).
-			                 grouped(2).foldRight("")(_+":"+_)^^CERT.hex
-		        }
-		   ⟝ RSA.public_exponent ⟶ ( pubKey.getPublicExponent.toString^^CERT.int_  )
-		)
+				⟝ RSA.modulus ⟶ { val pkstr = pubKey.getModulus.toString(16)
+								new StringOps(if (pkstr.size % 2 == 0) pkstr else " "+pkstr).
+									  grouped(2).foldRight("")(_+":"+_)^^CERT.hex
+					  }
+				⟝ RSA.public_exponent ⟶ ( pubKey.getPublicExponent.toString^^CERT.int_  )
+			)
 
-		val serviceGraph = (eg.bnode ∈ WEBIDPROVIDER.IDPService
-			                          ⟝ WEBIDPROVIDER.signingKey ⟶ publicKeyGrph
+			val serviceGraph = (eg.bnode ∈ WEBIDPROVIDER.IDPService
+												  ⟝ WEBIDPROVIDER.signingKey ⟶ publicKeyGrph
 					)
 
 		def sign(message: String) = synchronized {
@@ -154,10 +160,42 @@ class IdentityProvider extends Logging {
 	}
 
 	/**
+	 * Sadly jax-rs does not do pattern matching on attributes passed to select best method
+	 * So we do this here in a method.
+	 */
+	@GET
+	def request(@Context uriInfo: UriInfo) {
+		val params = asScalaMap[String,java.util.List[String]](uriInfo.getQueryParameters)
+		for (keyVal <- params) yield keyVal match {
+			case ("authreqissuer",lst) => {}
+
+		}
+	}
+
+
+
+	def init[T](clzz: Class[T], params: MultivaluedMap[String,String]) = {
+		import scala.collection.JavaConversions._
+		for (cnstrct <- clzz.getConstructors.sortWith (_.getParameterTypes.size > _.getParameterTypes.size);
+			ann = cnstrct.getParameterAnnotations.map(
+				_.filter(_.isInstanceOf[QueryParam]).headOption.map(_.asInstanceOf[QueryParam].value))
+		) yield {
+			ann.zip(cnstrct.getParameterTypes).map((name,clz: Class[_])=>{
+				val valStr: List[String] = params.get(name)
+				clz.getConstructors.sortWith(_.getParameterTypes.size > _.getParameterTypes.size)
+			}
+
+		}
+
+	}
+
+	case class params(@QueryParam("authreqissuer") relyingPartySrvc: Option[URL],
+		               @QueryParam("pause") pause: Boolean)
+
+	/**
 	 * A very simple GET returns an info page, explaining how the service works and what the public key
 	 * is.
 	 */
-	@GET
 	def infoPage() : Response = {
 		Response.ok(keyPair.serviceGraph).build()
 	}
@@ -167,7 +205,6 @@ class IdentityProvider extends Logging {
 	 * requestor with identity information if it exists
 	 * (what should it do if there is none?)
 	 */
-	@GET
 	def authenticate(@QueryParam("authreqissuer") relyingPartySrvc: URL ): Response = {
 		if (null == relyingPartySrvc) return infoPage()
 		val url = createSignedResponse(userPrincipals,relyingPartySrvc)
@@ -179,7 +216,6 @@ class IdentityProvider extends Logging {
 	 *
 	 * @param pause if true then pause on a profile page to let the user select if he wishes to login
 	 */
-	@GET
 	def authenticate(@QueryParam("authreqissuer") relyingPartySrvc: URL ,
 		     @QueryParam("pause") pause: Boolean): Response = {
 		if (pause) displayProfile(userPrincipals,relyingPartySrvc)

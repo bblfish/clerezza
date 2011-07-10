@@ -14,5 +14,6 @@
 		<module>ontologies</module>
 		<module>core</module>
         <module>test</module>
+        <module>identity-provider</module>
 	</modules>
 </project>
