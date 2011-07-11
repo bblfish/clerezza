@@ -111,6 +111,35 @@ class EzMGraphTest {
 	}
 
 	@Test
+	def twographs {
+
+		val ez1 = new EzMGraph() {(
+			b_("reto") -- FOAF.name --> "Reto Bachman-Gmür".lang("rm")
+		)}
+
+		Assert.assertEquals("the two graphs should be equal",1,ez1.size)
+
+		import ez1._
+		ez1.b_("reto") -- FOAF.homepage --> "http://bblfish.net/".uri
+		Assert.assertEquals("ez1 has grown by one",2,ez1.size)
+
+		//now a second graph
+
+		val ez2 = new EzMGraph() {(
+			b_("hjs") -- FOAF.name --> "Henry Story"
+		)}
+
+		ez2.b_("hjs") -- FOAF.homepage --> "http://bblfish.net/".uri
+		Assert.assertEquals("ez1 is the same size as it used to be",2,ez1.size)
+		Assert.assertEquals("ez2 has grown by one",2,ez2.size)
+
+		ez1.b_("reto") -- FOAF.currentProject --> "http://clerezza.org/".uri
+		Assert.assertEquals("ez1 has grown by one",3,ez1.size)
+
+
+	}
+
+	@Test
 	def usingAsciiArrows {
 		val ez = new EzMGraph() {(
 			b_("reto").a(FOAF.Person) -- FOAF.name --> "Reto Bachman-Gmür".lang("rm")
@@ -120,7 +149,7 @@ class EzMGraphTest {
 					"http://bblfish.net/#hjs".uri.a(FOAF.Person)
 						-- FOAF.name --> "Henry Story"
 				      -- FOAF.currentProject --> "http://webid.info/".uri
-				      -- FOAF.knows -->> List(b_("reto"), b_("danny"))
+				      -- FOAF.knows -->>> List(b_("reto"), b_("danny"))
 				  //one need to list properties before inverse properties, or use brackets
 				  <-- identity -- (
 						   bnode.a(RSAPublicKey) //. notation because of precedence of operators
@@ -142,7 +171,7 @@ class EzMGraphTest {
 			"http://bblfish.net/#hjs".uri -- FOAF.name --> "William"
 					-- FOAF.name --> "Bill"
 		)}
-		Assert.assertEquals("the triple colletion has grown by one",tinyGraph.size()+2,ez.size)
+		Assert.assertEquals("the triple colletion has grown by two",tinyGraph.size()+2,ez.size)
 		//or by just importing it
 		import ez._
 		ez.b_("danny") -- FOAF.name --> "George"

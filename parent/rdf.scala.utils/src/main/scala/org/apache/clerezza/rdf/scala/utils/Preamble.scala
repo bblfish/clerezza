@@ -105,7 +105,6 @@ protected[utils] trait TcIndependentConversions extends EzLiteralImplicits {
 	implicit def URItoUriRef(uri: URI) = new UriRef(uri.toString)
 
 	implicit def URLtoUriRef(url: URL) = new UriRef(url.toExternalForm)
-	
 }
 protected object TcIndependentConversions {
 	val emptyGraph = new impl.SimpleGraph(new impl.SimpleMGraph)
