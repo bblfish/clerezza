@@ -39,7 +39,7 @@
 			<groupId>org.apache.clerezza</groupId>
 			<artifactId>rdf.core</artifactId>
 		</dependency>
-		<dependency>
+        <dependency>
 			<groupId>org.apache.clerezza</groupId>
 			<artifactId>platform</artifactId>
 		</dependency>

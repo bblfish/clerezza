@@ -1,0 +1,42 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix vs: <http://www.w3.org/2003/06/sw-vocab-status/ns#> .
+@prefix dc: <http://purl.org/dc/terms/> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix cert: <http://www.w3.org/ns/auth/cert#> .
+@prefix : <http://bblfish.net/work/2011/06/18/webidProvider#> .
+
+<http://bblfish.net/work/2011/06/18/webidProvider>
+    dc:create "2011-06-18"^^xsd:date ;
+    a owl:Ontology ;
+    rdfs:comment """ An Ontology for describing a few things needed in the
+    simple WebID Identity Provider developed for web sites that do not have
+    access to ssl """ ;
+    vs:term_status "unstable" ;
+    foaf:maker <http://bblfish.net/people/henry/card#me> .
+
+:IDPService a owl:Class ;
+    rdfs:comment """
+     An IDP service after authenticating a user, can send the verified WebIDs back to the Relying Party by redirecting the users browser with the encoded WebIDs in the url. The URL should be signed. Hence the importance in this ontology of linking this service to the public signing key. Add more details later.""" .
+
+:ProfileSelector a foaf:Document;
+    rdfs:comment """
+     A Document where the user can see his own profile and can choose to authenticate to the relying party or not. """ .
+
+:relyingParty a rdf:Property;
+    skos:note "this is a relation off the profile selector at first, but need to see what happens with it";
+    rdfs:comment "the relying party".
+
+:authLink a rdf:Property;
+    skos:note "this is arelation off the :ProfileSelector at first";
+    rdfs:comment "the link to the authorisation response on the relying party site".
+
+:signingKey
+    a rdf:Property ;
+    rdfs:comment "the key that the service uses to sign its results" ;
+    rdfs:domain :IDPService ;
+    rdfs:range cert:PublicKey .
+

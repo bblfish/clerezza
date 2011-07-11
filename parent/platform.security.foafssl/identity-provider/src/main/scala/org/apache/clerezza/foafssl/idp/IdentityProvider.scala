@@ -25,7 +25,7 @@ import java.security.cert._
 import org.apache.clerezza.foafssl.ontologies.{RSA, WEBIDPROVIDER, CERT}
 import java.security.interfaces.{RSAPrivateKey, RSAPublicKey}
 import collection.immutable.StringOps
-import org.apache.clerezza.rdf.scala.utils.EasyGraph
+import org.apache.clerezza.rdf.scala.utils._
 import javax.ws.rs._
 import core.{MultivaluedMap, UriInfo, Context, Response}
 import org.apache.clerezza.platform.security.UserUtil
@@ -60,7 +60,7 @@ class IdentityProvider extends Logging {
 
 	import org.apache.clerezza.foafssl.ssl.Activator._
 	import collection.JavaConversions._
-	import org.apache.clerezza.rdf.scala.utils.EasyGraph._
+	import org.apache.clerezza.rdf.scala.utils._
 
 	var keyPair: KeyPair = null
 
@@ -77,19 +77,19 @@ class IdentityProvider extends Logging {
 
 		signature.initSign(privKey)
 
-	   val eg=  new EasyGraph()
+	   val eg=  new EzMGraph()
 
 		private def publicKeyGrph = (
-			eg.bnode ∈ RSA.RSAPublicKey
-				⟝ RSA.modulus ⟶ { val pkstr = pubKey.getModulus.toString(16)
-								new StringOps(if (pkstr.size % 2 == 0) pkstr else " "+pkstr).
+			eg.bnode.a( RSA.RSAPublicKey)
+				-- RSA.modulus --> { val pkstr = pubKey.getModulus.toString(16)
+								new StringOps(if (pkstr.size % 2 == 0)  pkstr  else " "+pkstr ).
 									  grouped(2).foldRight("")(_+":"+_)^^CERT.hex
 					  }
-				⟝ RSA.public_exponent ⟶ ( pubKey.getPublicExponent.toString^^CERT.int_  )
+				-- RSA.public_exponent --> ( pubKey.getPublicExponent.toString^^CERT.int_  )
 			)
 
-			val serviceGraph = (eg.bnode ∈ WEBIDPROVIDER.IDPService
-												  ⟝ WEBIDPROVIDER.signingKey ⟶ publicKeyGrph
+			val serviceGraph = (eg.bnode.a( WEBIDPROVIDER.IDPService)
+												  -- WEBIDPROVIDER.signingKey --> publicKeyGrph
 					)
 
 		def sign(message: String) = synchronized {
@@ -141,11 +141,11 @@ class IdentityProvider extends Logging {
 
 
 	def displayProfile(ids: Set[WebIdPrincipal], relyingPartySrvc: URL) = {
-		val eg = new EasyGraph()
-		val profile = (eg.bnode ∈  WEBIDPROVIDER.ProfileSelector
-			⟝ FOAF.primaryTopic ⟶* ids.map(f=>f.getWebId)
-			⟝ WEBIDPROVIDER.relyingParty ⟶ relyingPartySrvc
-			⟝ WEBIDPROVIDER.authLink ⟶ createSignedResponse(ids, relyingPartySrvc)
+		val eg = new EzMGraph()
+		val profile = (eg.bnode.a(WEBIDPROVIDER.ProfileSelector)
+			-- FOAF.primaryTopic -->> ids.map(f=>f.getWebId)
+			-- WEBIDPROVIDER.relyingParty --> relyingPartySrvc
+			-- WEBIDPROVIDER.authLink --> createSignedResponse(ids, relyingPartySrvc)
 			)
 		Response.ok(profile).build()
 	}
@@ -174,20 +174,20 @@ class IdentityProvider extends Logging {
 
 
 
-	def init[T](clzz: Class[T], params: MultivaluedMap[String,String]) = {
-		import scala.collection.JavaConversions._
-		for (cnstrct <- clzz.getConstructors.sortWith (_.getParameterTypes.size > _.getParameterTypes.size);
-			ann = cnstrct.getParameterAnnotations.map(
-				_.filter(_.isInstanceOf[QueryParam]).headOption.map(_.asInstanceOf[QueryParam].value))
-		) yield {
-			ann.zip(cnstrct.getParameterTypes).map((name,clz: Class[_])=>{
-				val valStr: List[String] = params.get(name)
-				clz.getConstructors.sortWith(_.getParameterTypes.size > _.getParameterTypes.size)
-			}
-
-		}
-
-	}
+//	def init[T](clzz: Class[T], params: MultivaluedMap[String,String]) = {
+//		import scala.collection.JavaConversions._
+//		for (cnstrct <- clzz.getConstructors.sortWith (_.getParameterTypes.size > _.getParameterTypes.size);
+//			ann = cnstrct.getParameterAnnotations.map(
+//				_.filter(_.isInstanceOf[QueryParam]).headOption.map(_.asInstanceOf[QueryParam].value))
+//		) yield {
+//			ann.zip(cnstrct.getParameterTypes).map((name,clz: Class[_])=>{
+//				val valStr: List[String] = params.get(name)
+//				clz.getConstructors.sortWith(_.getParameterTypes.size > _.getParameterTypes.size)
+//			}
+//
+//		}
+//
+//	}
 
 	case class params(@QueryParam("authreqissuer") relyingPartySrvc: Option[URL],
 		               @QueryParam("pause") pause: Boolean)
@@ -205,22 +205,22 @@ class IdentityProvider extends Logging {
 	 * requestor with identity information if it exists
 	 * (what should it do if there is none?)
 	 */
-	def authenticate(@QueryParam("authreqissuer") relyingPartySrvc: URL ): Response = {
-		if (null == relyingPartySrvc) return infoPage()
-		val url = createSignedResponse(userPrincipals,relyingPartySrvc)
-		RedirectUtil.createSeeOtherResponse(url)
-	}
+//	def authenticate(@QueryParam("authreqissuer") relyingPartySrvc: URL ): Response = {
+//		if (null == relyingPartySrvc) return infoPage()
+//		val url = createSignedResponse(userPrincipals,relyingPartySrvc)
+//		RedirectUtil.createSeeOtherResponse(url)
+//	}
 
 	/**
 	 * response on get when authrequestissuer and pause is set
 	 *
 	 * @param pause if true then pause on a profile page to let the user select if he wishes to login
 	 */
-	def authenticate(@QueryParam("authreqissuer") relyingPartySrvc: URL ,
-		     @QueryParam("pause") pause: Boolean): Response = {
-		if (pause) displayProfile(userPrincipals,relyingPartySrvc)
-		else authenticate(relyingPartySrvc)
-	}
+//	def authenticate(@QueryParam("authreqissuer") relyingPartySrvc: URL ,
+//		     @QueryParam("pause") pause: Boolean): Response = {
+//		if (pause) displayProfile(userPrincipals,relyingPartySrvc)
+//		else authenticate(relyingPartySrvc)
+//	}
 
 	/**
 	 * @param verifiedWebIDs

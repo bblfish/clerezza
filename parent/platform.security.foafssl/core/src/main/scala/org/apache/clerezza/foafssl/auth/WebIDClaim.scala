@@ -27,7 +27,7 @@ import org.apache.clerezza.rdf.utils.GraphNode
 import org.apache.clerezza.foafssl.ontologies.{RSA, CERT}
 import java.util.LinkedList
 import org.apache.clerezza.rdf.core._
-import org.apache.clerezza.rdf.scala.utils.Preamble._
+import org.apache.clerezza.rdf.scala.utils._
 import java.security.PublicKey
 import scala.None
 import org.apache.clerezza.platform.security.auth.WebIdPrincipal

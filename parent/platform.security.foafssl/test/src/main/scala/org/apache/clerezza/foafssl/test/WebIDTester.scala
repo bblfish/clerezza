@@ -31,7 +31,8 @@ import org.apache.clerezza.rdf.core._
 import access.NoSuchEntityException
 import impl.{PlainLiteralImpl, TypedLiteralImpl, SimpleMGraph}
 import org.apache.clerezza.foafssl.ontologies._
-import org.apache.clerezza.foafssl.auth.{WebIDClaim, Verification, WebIdPrincipal, X509Claim}
+import org.apache.clerezza.platform.security.auth.WebIdPrincipal
+import org.apache.clerezza.foafssl.auth.{WebIDClaim, Verification, X509Claim}
 import java.util.Date
 import serializedform.Serializer
 import java.io.ByteArrayOutputStream
@@ -208,7 +209,7 @@ class CertTester(subj: Subject, webIdGraphsService: WebIdGraphsService) extends 
 			-- EARL.result --> (g.bnode.a(EARL.TestResult)
 						-- DC.description --> {"found " + principals.size + " valid principals"}
 						-- EARL.outcome --> {if (principals.size > 0) EARL.passed else EARL.failed}
-						-- EARL.pointer -->> principals.map(p => p.webId)
+						-- EARL.pointer -->> principals.map(p => p.getWebId)
 						)
 			-- EARL.subject -->>> x509claimRefs.map(p => p._1)
 			)

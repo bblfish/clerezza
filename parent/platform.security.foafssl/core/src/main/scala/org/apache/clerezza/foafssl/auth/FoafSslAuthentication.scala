@@ -22,7 +22,7 @@ package org.apache.clerezza.foafssl.auth
 import org.apache.clerezza.platform.security.auth._
 import org.apache.clerezza.rdf.core._
 import access.LockableMGraph
-import impl.{TripleImpl, PlainLiteralImpl, SimpleMGraph}
+import impl.{SimpleMGraph, TripleImpl, PlainLiteralImpl}
 import org.wymiwyg.wrhapi.Request
 import org.wymiwyg.wrhapi.Response
 import javax.security.auth.Subject
@@ -32,7 +32,7 @@ import org.apache.clerezza.platform.users.WebIdGraphsService
 import org.slf4j.LoggerFactory
 import java.util.Collections
 import org.apache.clerezza.platform.security.UserUtil
-import org.apache.clerezza.rdf.scala.utils.EasyGraph
+import org.apache.clerezza.rdf.scala.utils._
 
 
 object FoafSslAuthentication {
@@ -41,9 +41,8 @@ object FoafSslAuthentication {
   final val ANONYMOUS: String = "anonymous"
 
   def createSystemUserDescription(claim: WebIDClaim): MGraph = {
-    val result = new EasyGraph()
-	 import org.apache.clerezza.rdf.scala.utils.EasyGraph._
-    result.addType(claim.webId, FOAF.Agent)
+    val result = new SimpleMGraph()
+    result.add(new TripleImpl(claim.webId,RDF.`type`, FOAF.Agent))
 	  //add(claim.webId, PLATFORM.userName,new String(claim.webId.hashCode())).
     result
   }
