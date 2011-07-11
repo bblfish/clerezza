@@ -33,12 +33,8 @@ import impl.{PlainLiteralImpl, TypedLiteralImpl, SimpleMGraph}
 import org.apache.clerezza.foafssl.ontologies._
 import org.apache.clerezza.foafssl.auth.{WebIDClaim, Verification, WebIdPrincipal, X509Claim}
 import java.util.Date
-import org.apache.clerezza.rdf.scala.utils.Preamble.{toRichGraphNode,toFirstElement}
 import serializedform.Serializer
 import java.io.ByteArrayOutputStream
-import org.apache.clerezza.rdf.scala.utils.Preamble._
-import java.math.BigInteger
-import collection.mutable.{Queue, LinkedList}
 import javax.security.auth.Subject
 import collection.JavaConversions._
 import org.apache.clerezza.platform.users.WebIdGraphsService
@@ -122,7 +118,7 @@ class WebIDTester {
 /** All the cert tests are placed here */
 class CertTester(subj: Subject, webIdGraphsService: WebIdGraphsService) extends Assertor {
 
-	import EARL.{passed, failed, cantTell, untested, inapplicable}
+	import EARL.{passed, failed, cantTell, untested}
 
 	val creds: scala.collection.mutable.Set[X509Claim] = subj.getPublicCredentials(classOf[X509Claim]);
 	val now = new Date()
@@ -130,7 +126,6 @@ class CertTester(subj: Subject, webIdGraphsService: WebIdGraphsService) extends 
 
 	def runTests() {
 
-		import g._
 		val thisDoc = (g.bnode.a(FOAF.Document) //there really has to be a way to get THIS doc url, to add relative urls to the graph
 			               -- DCTERMS.created --> now
 			)
@@ -148,7 +143,7 @@ class CertTester(subj: Subject, webIdGraphsService: WebIdGraphsService) extends 
 			// Assertion public key
 			//
 			val pubkey = claim.cert.getPublicKey
-			val testCertKey = create(TEST.certificatePubkeyRecognised, cert)
+			val testCertKey = create(TEST.certificatePubkeyRecognised, cert.getNode)
 
 			pubkey match {
 				case rsa: RSAPublicKey => {
@@ -172,7 +167,7 @@ class CertTester(subj: Subject, webIdGraphsService: WebIdGraphsService) extends 
 			//
 			// Assertion time stamp of certificate
 			//
-			val dateOkAss = create(TEST.certificateDateOk, cert)
+			val dateOkAss = create(TEST.certificateDateOk, cert.getNode)
 			val notBefore = claim.cert.getNotBefore
 			val notAfter = claim.cert.getNotAfter
 
@@ -199,7 +194,7 @@ class CertTester(subj: Subject, webIdGraphsService: WebIdGraphsService) extends 
 				                     -- DC.description --> {if (eC) "Certificate available" else "No Certificate Found"}
 				                     -- EARL.outcome --> {if (eC) EARL.passed else EARL.failed})
 			)
-		if (eC) ass -- EARL.subject -->> x509claimRefs.map(p => p._1)
+		if (eC) ass -- EARL.subject -->>> x509claimRefs.map(p => p._1)
 		else return g
 
 
@@ -215,7 +210,7 @@ class CertTester(subj: Subject, webIdGraphsService: WebIdGraphsService) extends 
 						-- EARL.outcome --> {if (principals.size > 0) EARL.passed else EARL.failed}
 						-- EARL.pointer -->> principals.map(p => p.webId)
 						)
-			-- EARL.subject -->> x509claimRefs.map(p => p._1)
+			-- EARL.subject -->>> x509claimRefs.map(p => p._1)
 			)
 		import collection.JavaConversions._
 
@@ -223,7 +218,7 @@ class CertTester(subj: Subject, webIdGraphsService: WebIdGraphsService) extends 
 			for (widc <- claim.webidclaims) {
 				import Verification._
 				val webidAss = create(TEST.webidClaim,
-					Seq(widc.webId, certRef)) //todo, we need to add a description of the profileKeys as found in the remote file
+					Seq(widc.webId, certRef.getNode)) //todo, we need to add a description of the profileKeys as found in the remote file
 				val result = webidAss.result
 				result.pointer(widc.webId)
 				result.exceptions = widc.errors
@@ -602,7 +597,6 @@ class CertTester(subj: Subject, webIdGraphsService: WebIdGraphsService) extends 
 			sout.serialize(out, graph, "text/rdf+n3")
 			val n3String = out.toString("UTF-8")
 			//todo: turtle mime type literal?
-			import g._
 			val keylit: GraphNode = g.bnode --  OWL.sameAs --> (n3String^^"http://example.com/turtle".uri)
 
 
@@ -709,7 +703,6 @@ class Assertor {
 			new TstResult
 		}
 
-		import g._
 		def toRdf(): GraphNode = (
 			g.bnode.a(EARL.Assertion)
 				-- EARL.test --> testName
@@ -743,7 +736,6 @@ class Assertor {
 
 
 		def toRdf(): GraphNode =  {
-				import g._
 				(g.bnode.a(EARL.TestResult)
 					-- DC.description --> description
 					-- EARL.outcome --> outcome

@@ -225,9 +225,19 @@ class RichGraphNode(resource: Resource, graph: TripleCollection ) extends GraphN
 		 * ...to the EzGraphNode, which is useful for opening a parenthesis.
 		 */
 		def -->(sub: GraphNode): RichGraphNode = {
-			//RichGraphNode.this + sub
+			graph.addAll(sub.getGraph)
 			-->(sub.getNode)
 		}
+
+		/**
+		 * Add one relation for each member of the iterable collection
+		 */
+		def -->>>(elems: Iterable[GraphNode]): RichGraphNode = {
+			for (res <- elems) -->(res)
+			RichGraphNode.this
+		}
+
+
 		/**
 		 * Add one relation for each member of the iterable collection
 		 */
