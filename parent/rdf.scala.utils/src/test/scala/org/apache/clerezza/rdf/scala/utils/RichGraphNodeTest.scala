@@ -62,14 +62,6 @@ class RichGraphNodeTest {
 		node = new GraphNode(johnUri, mGraph)
 	}
 
-	@Test
-	def testBaseGraph {
-		val preamble = new Preamble(mGraph)
-		import preamble._
-		def asGn(gn: GraphNode)  = gn
-		val johnUriNode = asGn(johnUri)
-		Assert.assertEquals(johnUriNode, node)
-	}
 
 	@Test
 	def testSlash = {

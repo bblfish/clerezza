@@ -19,9 +19,9 @@
 
 package org.apache.clerezza.rdf.scala.utils
 
-import org.apache.clerezza.rdf.core._
 import org.apache.clerezza.rdf.core.impl._
 import scala.collection.mutable.HashMap
+import org.apache.clerezza.rdf.core._
 
 
 /**
@@ -32,7 +32,7 @@ import scala.collection.mutable.HashMap
  * @author bblfish, reto
  * @created: 20/04/2011
  */
-class EzMGraph(val baseTc: MGraph) extends AbstractMGraph with TcDependentConversions {
+class EzMGraph(val baseTc: MGraph) extends AbstractMGraph  {
 
 
 	def this() = this (new SimpleMGraph())
@@ -72,6 +72,17 @@ class EzMGraph(val baseTc: MGraph) extends AbstractMGraph with TcDependentConver
 		}
 		new RichGraphNode(b,this)
 	}
+
+	/**
+	 * creates a graphNode from a resource, with this Graph as backingstore
+	 */
+	def node(resource: Resource) =  new RichGraphNode(resource,baseTc)
+
+	/**
+	 * creates a graphNode from the uri made of the given string
+	 * ( simple syntactic sugar )
+	 */
+	def uri(resource: String) = new RichGraphNode(new UriRef(resource),baseTc)
 
 }
 

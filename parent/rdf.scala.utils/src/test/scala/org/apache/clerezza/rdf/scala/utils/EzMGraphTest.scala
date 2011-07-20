@@ -92,7 +92,7 @@ class EzMGraphTest {
 			s.getGraph
 		}
 		val ez = new EzMGraph() {
-			henryUri.uri -- FOAF.knows --> retoUri.uri
+			uri(henryUri) -- FOAF.knows --> retoUri.uri
 		}
 		Assert.assertEquals("The two graphs should be equals", expected, ez.getGraph)
 	}
@@ -105,7 +105,7 @@ class EzMGraphTest {
 			s.getGraph
 		}
 		val ez = new EzMGraph() {
-			henryUri.uri <--  FOAF.knows -- retoUri.uri
+			uri(henryUri) <--  FOAF.knows -- retoUri.uri
 		}
 		Assert.assertEquals("The two graphs should be equals", expected, ez.getGraph)
 	}
@@ -119,7 +119,6 @@ class EzMGraphTest {
 
 		Assert.assertEquals("the two graphs should be equal",1,ez1.size)
 
-		import ez1._
 		ez1.b_("reto") -- FOAF.homepage --> "http://bblfish.net/".uri
 		Assert.assertEquals("ez1 has grown by one",2,ez1.size)
 
@@ -138,6 +137,61 @@ class EzMGraphTest {
 
 
 	}
+
+	/**
+	 * On Scala list
+	 * https://groups.google.com/d/msg/scala-user/IsJ1yXjd2lw/KXwKk1wXtSIJ
+	 */
+	@Test
+	def antiPatternDiscussion {
+		val uriA = "http://bblfish.net/".uri
+		val uriB = "http://danbri.org/foaf.rdf#danbri".uri
+		val uriC = "http://farewellutopia.com/reto/#me".uri
+		val uriD = "http://danny.ayers.name/index.rdf#me".uri
+
+		val graphA = new EzMGraph()
+		val graphB = new EzMGraph()
+
+		new RichGraphNode(uriA, graphA) -- FOAF.knows --> uriB
+		new RichGraphNode(uriB, graphA) -- FOAF.name -->"Dan Brickley"
+      new RichGraphNode(uriA, graphB) -- FOAF.knows --> uriC
+      new RichGraphNode(uriC, graphB) -- FOAF.knows --> uriD
+
+		Assert.assertEquals("graph A contains two statements",2,graphA.getGraph.size)
+		Assert.assertEquals("graph B contains two statements",2,graphB.getGraph.size)
+
+
+		//simplification 1
+
+		val graphA2 = new EzMGraph()
+		val graphB2 = new EzMGraph()
+
+		graphA2.node(uriA)  -- FOAF.knows --> ( uriB -- FOAF.name --> "Dan Brickley" )
+		graphB2.node(uriA)  -- FOAF.knows --> ( uriC --  FOAF.knows --> uriD )
+
+		Assert.assertEquals("graph A contains two statements",2, graphA2.getGraph.size)
+		Assert.assertEquals("graph B contains two statements",2, graphB2.getGraph.size)
+		Assert.assertEquals("graph A is isomorphic with graph A2", graphA.getGraph, graphA2.getGraph)
+		Assert.assertEquals("graph B is isomorphic with graph B2", graphB.getGraph, graphB2.getGraph)
+
+		//simplification 2
+
+		val graphA3 = new EzMGraph() {
+			node(uriA)  -- FOAF.knows --> ( uriB -- FOAF.name --> "Dan Brickley" )
+		}
+		val graphB3 = new EzMGraph() {
+			node(uriA)  -- FOAF.knows --> ( uriC --  FOAF.knows --> uriD )
+		}
+
+		Assert.assertEquals("graph A contains two statements",2, graphA3.getGraph.size)
+		Assert.assertEquals("graph B contains two statements",2, graphB3.getGraph.size)
+		Assert.assertEquals("graph A is isomorphic with graph A2", graphA.getGraph, graphA3.getGraph)
+		Assert.assertEquals("graph B is isomorphic with graph B2", graphB.getGraph, graphB3.getGraph)
+
+
+	}
+
+
 
 	@Test
 	def usingAsciiArrows {
@@ -168,12 +222,11 @@ class EzMGraphTest {
 		Assert.assertEquals("Both graphs should contain exactly the same triples",tinyGraph,ez.getGraph)
 		//We can add triples by creating a new anonymous instance
 		new EzMGraph(ez) {(
-			"http://bblfish.net/#hjs".uri -- FOAF.name --> "William"
+			uri("http://bblfish.net/#hjs") -- FOAF.name --> "William"
 					-- FOAF.name --> "Bill"
 		)}
 		Assert.assertEquals("the triple colletion has grown by two",tinyGraph.size()+2,ez.size)
-		//or by just importing it
-		import ez._
+
 		ez.b_("danny") -- FOAF.name --> "George"
 		Assert.assertEquals("the triple collection has grown by one",tinyGraph.size()+3,ez.size)
 	}
