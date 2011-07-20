@@ -24,6 +24,7 @@ import java.net.URI
 import java.net.URL
 import java.util.Date
 import org.apache.clerezza.rdf.core._
+import impl.SimpleMGraph
 
 
 /**
@@ -56,17 +57,9 @@ object Preamble extends TcIndependentConversions {
 *
 * @author bblfish, reto
 */
-class Preamble(val baseTc: TripleCollection) extends TcDependentConversions with TcIndependentConversions
+class Preamble(val baseTc: TripleCollection) extends TcIndependentConversions
 
 
-protected trait TcDependentConversions {
-	
-	def baseTc: TripleCollection
-	
-	implicit def toRichGraphNode(resource: Resource) = {
-		new RichGraphNode(new GraphNode(resource, baseTc))
-	}
-}
 
 protected[utils] trait TcIndependentConversions extends EzLiteralImplicits {
 	implicit def toRichGraphNode(node: GraphNode) = {
@@ -83,9 +76,6 @@ protected[utils] trait TcIndependentConversions extends EzLiteralImplicits {
 
 	private val litFactory = LiteralFactory.getInstance
 
-
-	implicit def lit2String(lit: Literal) = lit.getLexicalForm
-
 	implicit def date2lit(date: Date) = litFactory.createTypedLiteral(date)
 
 	implicit def int2lit(int: Int) = litFactory.createTypedLiteral(int)
@@ -100,11 +90,12 @@ protected[utils] trait TcIndependentConversions extends EzLiteralImplicits {
 
 	implicit def double2lit(double: Double) = litFactory.createTypedLiteral(double)
 
-	implicit def uriRef2Prefix(uriRef: UriRef) = new NameSpace(uriRef.getUnicodeString)
-
 	implicit def URItoUriRef(uri: URI) = new UriRef(uri.toString)
 
 	implicit def URLtoUriRef(url: URL) = new UriRef(url.toExternalForm)
+
+	implicit def resourceToRichGraphNode(res: Resource) = new RichGraphNode(res, new SimpleMGraph())
+
 }
 protected object TcIndependentConversions {
 	val emptyGraph = new impl.SimpleGraph(new impl.SimpleMGraph)

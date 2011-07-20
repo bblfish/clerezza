@@ -56,13 +56,6 @@ class TypeConversionTest {
 	}
 
 	@Test
-	def literaToString {
-		val lit = literalFactory.createTypedLiteral("a value")
-		val s: String = lit
-		Assert.assertEquals("a value", s)
-	}
-
-	@Test
 	def dotUri {
 		val t = new TripleImpl(new UriRef(("http://example.org/subject")), new UriRef(("http://example.org/predicate")), "http://example.org".uri)
 		Assert.assertEquals(new UriRef("http://example.org"), t.getObject)
