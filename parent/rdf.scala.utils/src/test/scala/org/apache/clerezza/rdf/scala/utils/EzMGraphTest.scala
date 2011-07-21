@@ -24,6 +24,9 @@ import impl._
 import org.apache.clerezza.rdf.ontologies._
 
 /**
+ * In these test classes the implicit imports are brought in very carefully, as they also need to
+ * be tested
+ *
  * @author bblfish, reto
  */ 
 class EzMGraphTest {
@@ -86,6 +89,8 @@ class EzMGraphTest {
 
 	@Test
 	def singleTriple {
+		import org.apache.clerezza.rdf.scala.utils.Preamble._
+
 		val expected = {
 			val s = new SimpleMGraph
 			s.add(new TripleImpl(henryUri.uri, FOAF.knows, retoUri.uri))
@@ -99,6 +104,7 @@ class EzMGraphTest {
 
 	@Test
 	def inverseTriple {
+		import org.apache.clerezza.rdf.scala.utils.Preamble._
 		val expected = {
 			val s = new SimpleMGraph
 			s.add(new TripleImpl(retoUri.uri, FOAF.knows, henryUri.uri))
@@ -112,6 +118,7 @@ class EzMGraphTest {
 
 	@Test
 	def twographs {
+		import org.apache.clerezza.rdf.scala.utils.Preamble._
 
 		val ez1 = new EzMGraph() {(
 			b_("reto") -- FOAF.name --> "Reto Bachman-Gmür".lang("rm")
@@ -144,6 +151,8 @@ class EzMGraphTest {
 	 */
 	@Test
 	def antiPatternDiscussion {
+		import org.apache.clerezza.rdf.scala.utils.Preamble.string2lit
+
 		val uriA = "http://bblfish.net/".uri
 		val uriB = "http://danbri.org/foaf.rdf#danbri".uri
 		val uriC = "http://farewellutopia.com/reto/#me".uri
@@ -160,33 +169,52 @@ class EzMGraphTest {
 		Assert.assertEquals("graph A contains two statements",2,graphA.getGraph.size)
 		Assert.assertEquals("graph B contains two statements",2,graphB.getGraph.size)
 
+		{
+			import org.apache.clerezza.rdf.scala.utils.Preamble.resourceToRichGraphNode
 
-		//simplification 1
+			//simplification 1
 
-		val graphA2 = new EzMGraph()
-		val graphB2 = new EzMGraph()
+			val graphA2 = new EzMGraph()
+			val graphB2 = new EzMGraph()
 
-		graphA2.node(uriA)  -- FOAF.knows --> ( uriB -- FOAF.name --> "Dan Brickley" )
-		graphB2.node(uriA)  -- FOAF.knows --> ( uriC --  FOAF.knows --> uriD )
+			graphA2.node(uriA) -- FOAF.knows --> (uriB -- FOAF.name --> "Dan Brickley")
+			graphB2.node(uriA) -- FOAF.knows --> (uriC -- FOAF.knows --> uriD)
 
-		Assert.assertEquals("graph A contains two statements",2, graphA2.getGraph.size)
-		Assert.assertEquals("graph B contains two statements",2, graphB2.getGraph.size)
-		Assert.assertEquals("graph A is isomorphic with graph A2", graphA.getGraph, graphA2.getGraph)
-		Assert.assertEquals("graph B is isomorphic with graph B2", graphB.getGraph, graphB2.getGraph)
+			Assert.assertEquals("graph A contains two statements", 2, graphA2.getGraph.size)
+			Assert.assertEquals("graph B contains two statements", 2, graphB2.getGraph.size)
+			Assert.assertEquals("graph A is isomorphic with graph A2", graphA.getGraph, graphA2.getGraph)
+			Assert.assertEquals("graph B is isomorphic with graph B2", graphB.getGraph, graphB2.getGraph)
 
-		//simplification 2
+			//simplification 2
 
-		val graphA3 = new EzMGraph() {
-			node(uriA)  -- FOAF.knows --> ( uriB -- FOAF.name --> "Dan Brickley" )
+			val graphA3 = new EzMGraph() {
+				node(uriA) -- FOAF.knows --> (uriB -- FOAF.name --> "Dan Brickley")
+			}
+			val graphB3 = new EzMGraph() {
+				node(uriA) -- FOAF.knows --> (uriC -- FOAF.knows --> uriD)
+			}
+
+			Assert.assertEquals("graph A contains two statements", 2, graphA3.getGraph.size)
+			Assert.assertEquals("graph B contains two statements", 2, graphB3.getGraph.size)
+			Assert.assertEquals("graph A is isomorphic with graph A2", graphA.getGraph, graphA3.getGraph)
+			Assert.assertEquals("graph B is isomorphic with graph B2", graphB.getGraph, graphB3.getGraph)
 		}
-		val graphB3 = new EzMGraph() {
-			node(uriA)  -- FOAF.knows --> ( uriC --  FOAF.knows --> uriD )
+
+		//simplification 3
+		// now we use the implicit defined inside the class
+
+		val graphA4 = new EzMGraph() {
+			uriA  -- FOAF.knows --> ( uriB -- FOAF.name --> "Dan Brickley" )
+		}
+		val graphB4 = new EzMGraph() {
+			uriA  -- FOAF.knows --> ( uriC --  FOAF.knows --> uriD )
 		}
 
-		Assert.assertEquals("graph A contains two statements",2, graphA3.getGraph.size)
-		Assert.assertEquals("graph B contains two statements",2, graphB3.getGraph.size)
-		Assert.assertEquals("graph A is isomorphic with graph A2", graphA.getGraph, graphA3.getGraph)
-		Assert.assertEquals("graph B is isomorphic with graph B2", graphB.getGraph, graphB3.getGraph)
+		Assert.assertEquals("graph A contains two statements",2, graphA4.getGraph.size)
+		Assert.assertEquals("graph B contains two statements",2, graphB4.getGraph.size)
+		Assert.assertEquals("graph A is isomorphic with graph A2", graphA.getGraph, graphA4.getGraph)
+		Assert.assertEquals("graph B is isomorphic with graph B2", graphB.getGraph, graphB4.getGraph)
+
 
 
 	}
@@ -195,6 +223,8 @@ class EzMGraphTest {
 
 	@Test
 	def usingAsciiArrows {
+		import org.apache.clerezza.rdf.scala.utils.Preamble._
+
 		val ez = new EzMGraph() {(
 			b_("reto").a(FOAF.Person) -- FOAF.name --> "Reto Bachman-Gmür".lang("rm")
 				-- FOAF.title --> "Mr"

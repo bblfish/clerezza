@@ -34,6 +34,8 @@ import org.apache.clerezza.rdf.core._
  */
 class EzMGraph(val baseTc: MGraph) extends AbstractMGraph  {
 
+	// stop the implicit from the Preamble that maps a resource to a RichGraphNode with an empty modifiable graph
+	implicit def resourceToRichGraphNode = null
 
 	def this() = this (new SimpleMGraph())
 
@@ -76,7 +78,7 @@ class EzMGraph(val baseTc: MGraph) extends AbstractMGraph  {
 	/**
 	 * creates a graphNode from a resource, with this Graph as backingstore
 	 */
-	def node(resource: Resource) =  new RichGraphNode(resource,baseTc)
+	implicit def node(resource: Resource) =  new RichGraphNode(resource,baseTc)
 
 	/**
 	 * creates a graphNode from the uri made of the given string
