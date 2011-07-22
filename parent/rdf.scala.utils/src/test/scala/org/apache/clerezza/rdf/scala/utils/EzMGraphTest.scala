@@ -18,10 +18,10 @@
  */
 package org.apache.clerezza.rdf.scala.utils
 
-import org.junit._
 import org.apache.clerezza.rdf.core._
 import impl._
 import org.apache.clerezza.rdf.ontologies._
+import org.junit._
 
 /**
  * In these test classes the implicit imports are brought in very carefully, as they also need to
@@ -96,10 +96,10 @@ class EzMGraphTest {
 			s.add(new TripleImpl(henryUri.uri, FOAF.knows, retoUri.uri))
 			s.getGraph
 		}
-		val ez = new EzMGraph() {
+		val ez = new context() {
 			uri(henryUri) -- FOAF.knows --> retoUri.uri
 		}
-		Assert.assertEquals("The two graphs should be equals", expected, ez.getGraph)
+		Assert.assertEquals("The two graphs should be equals", expected, ez.graph.getGraph)
 	}
 
 	@Test
@@ -110,36 +110,42 @@ class EzMGraphTest {
 			s.add(new TripleImpl(retoUri.uri, FOAF.knows, henryUri.uri))
 			s.getGraph
 		}
-		val ez = new EzMGraph() {
+		val ez = new context {
 			uri(henryUri) <--  FOAF.knows -- retoUri.uri
 		}
-		Assert.assertEquals("The two graphs should be equals", expected, ez.getGraph)
+		Assert.assertEquals("The two graphs should be equals", expected, ez.graph.getGraph)
 	}
 
 	@Test
 	def twographs {
 		import org.apache.clerezza.rdf.scala.utils.Preamble._
 
-		val ez1 = new EzMGraph() {(
+		val ez1 = new context {
 			b_("reto") -- FOAF.name --> "Reto Bachman-Gmür".lang("rm")
-		)}
+		}.graph
 
 		Assert.assertEquals("the two graphs should be equal",1,ez1.size)
 
-		ez1.b_("reto") -- FOAF.homepage --> "http://bblfish.net/".uri
+		new context(ez1) {
+			b_("reto") -- FOAF.homepage --> "http://bblfish.net/".uri
+		}
 		Assert.assertEquals("ez1 has grown by one",2,ez1.size)
 
 		//now a second graph
 
-		val ez2 = new EzMGraph() {(
+		val ez2 = new context {
 			b_("hjs") -- FOAF.name --> "Henry Story"
-		)}
+		}.graph
 
-		ez2.b_("hjs") -- FOAF.homepage --> "http://bblfish.net/".uri
+		new context(ez2) {
+		   b_("hjs") -- FOAF.homepage --> "http://bblfish.net/".uri
+		}
 		Assert.assertEquals("ez1 is the same size as it used to be",2,ez1.size)
 		Assert.assertEquals("ez2 has grown by one",2,ez2.size)
 
-		ez1.b_("reto") -- FOAF.currentProject --> "http://clerezza.org/".uri
+		new context(ez1) {
+			b_("reto") -- FOAF.currentProject --> "http://clerezza.org/".uri
+		}
 		Assert.assertEquals("ez1 has grown by one",3,ez1.size)
 
 
@@ -158,64 +164,29 @@ class EzMGraphTest {
 		val uriC = "http://farewellutopia.com/reto/#me".uri
 		val uriD = "http://danny.ayers.name/index.rdf#me".uri
 
-		val graphA = new EzMGraph()
-		val graphB = new EzMGraph()
+		val graphA = new SimpleMGraph()
+		val graphB = new SimpleMGraph()
 
-		new RichGraphNode(uriA, graphA) -- FOAF.knows --> uriB
-		new RichGraphNode(uriB, graphA) -- FOAF.name -->"Dan Brickley"
-      new RichGraphNode(uriA, graphB) -- FOAF.knows --> uriC
-      new RichGraphNode(uriC, graphB) -- FOAF.knows --> uriD
+		graphA.add(new TripleImpl(uriA,FOAF.knows,uriB))
+		graphA.add(new TripleImpl(uriB,FOAF.name,"Dan Brickley"))
+		graphB.add(new TripleImpl(uriA,FOAF.knows,uriC))
+		graphB.add(new TripleImpl(uriC,FOAF.knows,uriD))
 
 		Assert.assertEquals("graph A contains two statements",2,graphA.getGraph.size)
 		Assert.assertEquals("graph B contains two statements",2,graphB.getGraph.size)
 
-		{
-			import org.apache.clerezza.rdf.scala.utils.Preamble.resourceToRichGraphNode
 
-			//simplification 1
-
-			val graphA2 = new EzMGraph()
-			val graphB2 = new EzMGraph()
-
-			graphA2.node(uriA) -- FOAF.knows --> (uriB -- FOAF.name --> "Dan Brickley")
-			graphB2.node(uriA) -- FOAF.knows --> (uriC -- FOAF.knows --> uriD)
-
-			Assert.assertEquals("graph A contains two statements", 2, graphA2.getGraph.size)
-			Assert.assertEquals("graph B contains two statements", 2, graphB2.getGraph.size)
-			Assert.assertEquals("graph A is isomorphic with graph A2", graphA.getGraph, graphA2.getGraph)
-			Assert.assertEquals("graph B is isomorphic with graph B2", graphB.getGraph, graphB2.getGraph)
-
-			//simplification 2
-
-			val graphA3 = new EzMGraph() {
-				node(uriA) -- FOAF.knows --> (uriB -- FOAF.name --> "Dan Brickley")
-			}
-			val graphB3 = new EzMGraph() {
-				node(uriA) -- FOAF.knows --> (uriC -- FOAF.knows --> uriD)
-			}
-
-			Assert.assertEquals("graph A contains two statements", 2, graphA3.getGraph.size)
-			Assert.assertEquals("graph B contains two statements", 2, graphB3.getGraph.size)
-			Assert.assertEquals("graph A is isomorphic with graph A2", graphA.getGraph, graphA3.getGraph)
-			Assert.assertEquals("graph B is isomorphic with graph B2", graphB.getGraph, graphB3.getGraph)
-		}
-
-		//simplification 3
-		// now we use the implicit defined inside the class
-
-		val graphA4 = new EzMGraph() {
+		val graphA4 = new context {
 			uriA  -- FOAF.knows --> ( uriB -- FOAF.name --> "Dan Brickley" )
-		}
-		val graphB4 = new EzMGraph() {
+		}.graph
+		val graphB4 = new context {
 			uriA  -- FOAF.knows --> ( uriC --  FOAF.knows --> uriD )
-		}
+		}.graph
 
 		Assert.assertEquals("graph A contains two statements",2, graphA4.getGraph.size)
 		Assert.assertEquals("graph B contains two statements",2, graphB4.getGraph.size)
 		Assert.assertEquals("graph A is isomorphic with graph A2", graphA.getGraph, graphA4.getGraph)
 		Assert.assertEquals("graph B is isomorphic with graph B2", graphB.getGraph, graphB4.getGraph)
-
-
 
 	}
 
@@ -225,7 +196,7 @@ class EzMGraphTest {
 	def usingAsciiArrows {
 		import org.apache.clerezza.rdf.scala.utils.Preamble._
 
-		val ez = new EzMGraph() {(
+		val ez = new context {(
 			b_("reto").a(FOAF.Person) -- FOAF.name --> "Reto Bachman-Gmür".lang("rm")
 				-- FOAF.title --> "Mr"
 				-- FOAF.currentProject --> "http://clerezza.org/".uri
@@ -247,17 +218,18 @@ class EzMGraphTest {
 				      -- FOAF.knows --> "http://bblfish.net/#hjs".uri //knows
 						-- FOAF.knows --> b_("reto")
 				)
-		)}
+		)}.graph
+
 		Assert.assertEquals("the two graphs should be of same size",tinyGraph.size,ez.size)
 		Assert.assertEquals("Both graphs should contain exactly the same triples",tinyGraph,ez.getGraph)
 		//We can add triples by creating a new anonymous instance
-		new EzMGraph(ez) {(
+		new context(ez) {(
 			uri("http://bblfish.net/#hjs") -- FOAF.name --> "William"
 					-- FOAF.name --> "Bill"
 		)}
 		Assert.assertEquals("the triple colletion has grown by two",tinyGraph.size()+2,ez.size)
 
-		ez.b_("danny") -- FOAF.name --> "George"
+		new context(ez) { b_("danny") -- FOAF.name --> "George" }
 		Assert.assertEquals("the triple collection has grown by one",tinyGraph.size()+3,ez.size)
 	}
 
