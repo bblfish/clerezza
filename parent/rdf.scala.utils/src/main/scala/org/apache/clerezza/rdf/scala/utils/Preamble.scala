@@ -94,7 +94,6 @@ protected[utils] trait TcIndependentConversions extends EzLiteralImplicits {
 
 	implicit def URLtoUriRef(url: URL) = new UriRef(url.toExternalForm)
 
-	implicit def resourceToRichGraphNode(res: Resource) = new RichGraphNode(res, new SimpleMGraph())
 
 }
 protected object TcIndependentConversions {
