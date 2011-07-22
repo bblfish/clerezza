@@ -29,7 +29,7 @@ import org.apache.clerezza.rdf.core.impl.util.Base64
 import java.security.interfaces.RSAPublicKey
 import org.apache.clerezza.rdf.core._
 import access.NoSuchEntityException
-import impl.{PlainLiteralImpl, TypedLiteralImpl, SimpleMGraph}
+import impl.{SimpleMGraph, PlainLiteralImpl, TypedLiteralImpl}
 import org.apache.clerezza.foafssl.ontologies._
 import org.apache.clerezza.platform.security.auth.WebIdPrincipal
 import org.apache.clerezza.foafssl.auth.{WebIDClaim, Verification, X509Claim}
@@ -86,8 +86,8 @@ class WebIDTester {
 
 	@GET
 	def getTestMeRDF(): TripleCollection = {
-		val certTester = new CertTester(UserUtil.getCurrentSubject(), webIdGraphsService)
-		certTester.runTests()
+		val certTester = new CertTests(UserUtil.getCurrentSubject(), webIdGraphsService)
+		certTester.describeTests()
 		return certTester.toRdf()
 	}
 
@@ -117,7 +117,7 @@ class WebIDTester {
 }
 
 /** All the cert tests are placed here */
-class CertTester(subj: Subject, webIdGraphsService: WebIdGraphsService) extends Assertor {
+class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends Assertions {
 
 	import EARL.{passed, failed, cantTell, untested}
 
@@ -125,17 +125,18 @@ class CertTester(subj: Subject, webIdGraphsService: WebIdGraphsService) extends 
 	val now = new Date()
 
 
-	def runTests() {
+	def describeTests() {
 
-		val thisDoc = (g.bnode.a(FOAF.Document) //there really has to be a way to get THIS doc url, to add relative urls to the graph
-			               -- DCTERMS.created --> now
+		val thisDoc = (
+			bnode.a(FOAF.Document) //there really has to be a way to get THIS doc url, to add relative urls to the graph
+              -- DCTERMS.created --> now
 			)
 		//
 		// Description of certificates and their public profileKeys
 		//
 		val x509claimRefs = for (claim <- creds) yield {
-			val cert = g.bnode
-			(
+			val cert = bnode
+			  (
 				cert.a(CERT.Certificate)
 					-- CERT.base64der --> Base64.encode(claim.cert.getEncoded())
 				)
@@ -148,7 +149,7 @@ class CertTester(subj: Subject, webIdGraphsService: WebIdGraphsService) extends 
 
 			pubkey match {
 				case rsa: RSAPublicKey => {
-					val pk = (g.bnode.a(RSA.RSAPublicKey)
+					val pk = (bnode.a(RSA.RSAPublicKey)
 						-- RSA.modulus --> new TypedLiteralImpl(rsa.getModulus.toString(16), CERT.hex)
 						-- RSA.public_exponent --> new TypedLiteralImpl(rsa.getPublicExponent.toString(10), CERT.int_)
 						)
@@ -189,14 +190,14 @@ class CertTester(subj: Subject, webIdGraphsService: WebIdGraphsService) extends 
 		//
 		val eC = x509claimRefs.size > 0
 		val ass = (
-			g.bnode.a(EARL.Assertion)
+			bnode.a(EARL.Assertion)
 				-- EARL.test --> TEST.certificateProvided
-				-- EARL.result --> (g.bnode.a(EARL.TestResult)
+				-- EARL.result --> (bnode.a(EARL.TestResult)
 				                     -- DC.description --> {if (eC) "Certificate available" else "No Certificate Found"}
 				                     -- EARL.outcome --> {if (eC) EARL.passed else EARL.failed})
 			)
 		if (eC) ass -- EARL.subject -->>> x509claimRefs.map(p => p._1)
-		else return g
+		else return
 
 
 		//
@@ -204,15 +205,16 @@ class CertTester(subj: Subject, webIdGraphsService: WebIdGraphsService) extends 
 		//
 		val principals = for (p <- subj.getPrincipals
 		                      if p.isInstanceOf[WebIdPrincipal]) yield p.asInstanceOf[WebIdPrincipal]
-		(g.bnode.a(EARL.Assertion)
+		(
+		bnode.a(EARL.Assertion)
 			-- EARL.test --> TEST.webidAuthentication
-			-- EARL.result --> (g.bnode.a(EARL.TestResult)
+			-- EARL.result --> (bnode.a(EARL.TestResult)
 						-- DC.description --> {"found " + principals.size + " valid principals"}
 						-- EARL.outcome --> {if (principals.size > 0) EARL.passed else EARL.failed}
 						-- EARL.pointer -->> principals.map(p => p.getWebId)
 						)
 			-- EARL.subject -->>> x509claimRefs.map(p => p._1)
-			)
+		)
 		import collection.JavaConversions._
 
 		for ((certRef, claim) <- x509claimRefs) {
@@ -598,7 +600,7 @@ class CertTester(subj: Subject, webIdGraphsService: WebIdGraphsService) extends 
 			sout.serialize(out, graph, "text/rdf+n3")
 			val n3String = out.toString("UTF-8")
 			//todo: turtle mime type literal?
-			val keylit: GraphNode = g.bnode --  OWL.sameAs --> (n3String^^"http://example.com/turtle".uri)
+			val keylit: GraphNode = bnode --  OWL.sameAs --> (n3String^^"http://example.com/turtle".uri)
 
 
 			//
@@ -663,17 +665,20 @@ class CertTester(subj: Subject, webIdGraphsService: WebIdGraphsService) extends 
 }
 
 /**
-  * Assertors create and manage assertions.
+  * Assertions on tests
   *
-  * Assertions created with with such an object will be added to the list
-  * when runTests information is added - and only then. This is a convenience
-  * to make the Assertor keep track of tests
+  * Assertions created with such an object will be added to the list
+  * when describeTests information is added - and only then. This is a convenience
+  * to make the Assertions keep track of tests
   *
-  * sublcass Assertors for specific types of runTests suites
+  * subclass Assertions for specific types of describeTests suites
   */
-class Assertor {
+abstract class Assertions extends context(new SimpleMGraph())  {
 
-	val g = new EzMGraph(new SimpleMGraph)
+	/**
+	 * extend this to describe the test and build the test suite
+	 */
+	abstract def describeTests()
 
 	var assertions: List[Assertion] = Nil
 
@@ -690,13 +695,13 @@ class Assertor {
 		for (test <- assertions) {
 			test.toRdf()
 		}
-		g
+		graph
 	}
 
 	class Assertion(testName: UriRef,
-	                subjects: Seq[Resource]) {
+	                subjects: Seq[Resource]) extends context(graph) {
 
-		//only add this runTests to the list of assertions if there is a result
+		//only add this describeTests to the list of assertions if there is a result
 		//this makes it easier to write code that keeps track of assertions, without ending up having to
 		//publish all of them
 		lazy val result = {
@@ -704,15 +709,15 @@ class Assertor {
 			new TstResult
 		}
 
-		def toRdf(): GraphNode = (
-			g.bnode.a(EARL.Assertion)
+		def toRdf() = (
+			bnode.a(EARL.Assertion)
 				-- EARL.test --> testName
 				-- EARL.result --> result.toRdf()
 				-- EARL.subject -->> subjects
-			)
+		)
 	}
 
-	class TstResult {
+	class TstResult extends context(graph) {
 		var description: String = _
 		var outcome: UriRef = _
 		var pointers: Seq[Resource] = Nil
@@ -736,14 +741,13 @@ class Assertor {
 		}
 
 
-		def toRdf(): GraphNode =  {
-				(g.bnode.a(EARL.TestResult)
+		def toRdf() =
+				(bnode.a(EARL.TestResult)
 					-- DC.description --> description
 					-- EARL.outcome --> outcome
 					-- EARL.pointer -->> pointers
 				   -- EARL.info -->> { for (e <- exceptions) yield new PlainLiteralImpl(e.toString)  }
-				   )
-		}
+				)
 
 	}
 
