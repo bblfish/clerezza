@@ -28,33 +28,24 @@ class Activator extends BundleActivator {
 	final val path = "admin/renderlets/overview"
 	@Path(path)
 	object RenderletsOverview {
-		@GET def get() = {
-			val resultMGraph = new SimpleMGraph();
-			val preamble = new Preamble(resultMGraph)
-			import preamble._
-			val resultNode = new GraphNode(new BNode(), resultMGraph);
-			resultNode.addProperty(RDF.`type` , Ontology.RenderletOverviewPage);
-			resultNode.addProperty(RDF.`type` , PLATFORM.HeadedPage);
-			resultNode.addProperty(RDF.`type` , RDF.List);
+
+		@GET def get() =  new context {
+			val resultNode = ( bnode.a(Ontology.RenderletOverviewPage)
+			                        .a(PLATFORM.HeadedPage)
+				                     .a(RDF.List))
 			val renderletList = resultNode.asList;
 			for (sr <- bundleContext.getServiceReferences(classOf[TypeRenderlet].getName, null)) {
 				val renderlet = bundleContext.getService(sr).asInstanceOf[TypeRenderlet]
-				val rendRes = new BNode()
-				rendRes.addProperty(RDF.`type`, Ontology.Renderlet);
-				rendRes.addPropertyValue(Ontology.mediaType,
-										renderlet.getMediaType.toString)
-				if (renderlet.getModePattern != null) rendRes.addPropertyValue(Ontology.modePattern,
-										renderlet.getModePattern)
-				rendRes.addProperty(Ontology.rdfType,
-										renderlet.getRdfType)
-				rendRes.addPropertyValue(Ontology.stringRepresentation,
-										renderlet.toString)
-				rendRes.addPropertyValue(Ontology.providingBundle,
-										sr.getBundle.getLocation)
-				renderletList.add(rendRes)
+				val rendRes =  ( bnode.a(Ontology.Renderlet)
+				                  -- Ontology.mediaType --> renderlet.getMediaType.toString)
+				if (renderlet.getModePattern != null) rendRes -- Ontology.modePattern --> renderlet.getModePattern
+				(rendRes.a(renderlet.getRdfType)
+				   -- Ontology.stringRepresentation --> renderlet.toString
+				   -- Ontology.providingBundle --> sr.getBundle.getLocation)
+				renderletList.add(rendRes.getNode)
 			}
-			resultNode;
-		}
+		}.resultNode
+
 	}
 
 	object MenuProvider extends GlobalMenuItemsProvider {
