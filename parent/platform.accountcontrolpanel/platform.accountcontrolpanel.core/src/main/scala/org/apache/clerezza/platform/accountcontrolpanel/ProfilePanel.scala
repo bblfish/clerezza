@@ -22,7 +22,7 @@ import java.util.List
 import java.util.Arrays
 import java.util.Collections
 import java.util.Iterator
-import ontologies.{PINGBACK, CONTROLPANEL}
+import ontologies.CONTROLPANEL
 import org.apache.clerezza.platform.security.UserUtil
 import org.apache.clerezza.ssl.keygen.CertSerialisation
 import org.apache.clerezza.ssl.keygen.Certificate
@@ -33,17 +33,14 @@ import org.apache.clerezza.jaxrs.utils.TrailingSlash
 import org.apache.clerezza.platform.config.PlatformConfig
 import org.apache.clerezza.platform.usermanager.UserManager
 import org.apache.clerezza.rdf.core._
+import impl.{SimpleMGraph, TripleImpl}
 import org.apache.clerezza.platform.Constants
 import access.TcManager
-import impl.{SimpleMGraph, TripleImpl}
 import org.apache.clerezza.rdf.utils.GraphNode
 import org.apache.clerezza.rdf.utils.UnionMGraph
 import org.osgi.service.component.ComponentContext
 import javax.ws.rs._
-import javax.ws.rs.core.Context
-import javax.ws.rs.core.MediaType
-import javax.ws.rs.core.Response
-import javax.ws.rs.core.UriInfo
+import core._
 import java.math.BigInteger
 import java.security.AccessController
 import java.security.PrivilegedAction
@@ -82,9 +79,6 @@ object ProfilePanel {
 class ProfilePanel extends Logging {
 
 	import collection.JavaConversions._
-	import Preamble._
-
-
 	@GET
 	def getPersonalProfilePage(@Context uriInfo: UriInfo,
 	                           @PathParam(value = "id") userName: String): GraphNode = {
@@ -94,7 +88,8 @@ class ProfilePanel extends Logging {
 		return resultNode
 	}
 
-	//todo: there is a bit of repetition in the graphs, and it is not clear why these relations should not go straight into the DB. What should, what should not?
+	//todo: there is a bit of repetition in the graphs, and it is not clear why these relations should not go straight
+	// into the DB. What should, what should not?
 	private def getPersonalProfile(userName: String, info: UriInfo): GraphNode = {
 		val profileDocUri = getSuggestedPPDUri(userName)
 
@@ -102,25 +97,24 @@ class ProfilePanel extends Logging {
 			def run: GraphNode = {
 				val userInSysGraph = userManager.getUserInSystemGraph(userName)
 				val user = userInSysGraph.getNode
-				val profile: GraphNode = userInSysGraph.getNode match {
-					case blank: BNode => {
-						//user does not have a webId yet
-						val g = new EzMGraph()
-						import g._
-						val profile = bnode
-						(profile -- CONTROLPANEL.isLocalProfile --> bool2lit(true)
-							-- CONTROLPANEL.suggestedPPDUri --> profileDocUri
-							-- FOAF.primaryTopic --> (bnode -- PLATFORM.userName --> userName))
-						profile
+				val profile: GraphNode =  user match {
+						case blank: BNode => new context {
+							//user does not have a webId yet
+							val profile = ( bnode -- CONTROLPANEL.isLocalProfile --> true
+								-- CONTROLPANEL.suggestedPPDUri --> profileDocUri
+								-- FOAF.primaryTopic --> (bnode -- PLATFORM.userName --> userName))
+
+						}.profile
+						case webid: UriRef => {
+							val webIDInfo = webIdGraphsService.getWebIdInfo(webid)
+							val gr = new context() {(
+								profileDocUri -- CONTROLPANEL.isLocalProfile --> webIDInfo.isLocal
+								    -- FOAF.primaryTopic --> webid
+								)}.graph
+							new GraphNode(profileDocUri, new UnionMGraph(gr, webIDInfo.localPublicUserData))
+						}
 					}
-					case webid: UriRef => {
-						var webIDInfo = webIdGraphsService.getWebIdInfo(webid)
-						var res = new GraphNode(profileDocUri, new UnionMGraph(new SimpleMGraph, webIDInfo.localPublicUserData))
-						(res -- CONTROLPANEL.isLocalProfile --> bool2lit(webIDInfo.isLocal)
-							-- FOAF.primaryTopic --> webid)
-						res
-					}
-				}
+
 				val friendInfo:Iterator[TripleCollection] = for (kn: Triple <- profile.getGraph.filter(user.asInstanceOf[NonLiteral], FOAF.knows, null)
 				                      if kn.getObject.isInstanceOf[UriRef];
 				                      friend = kn.getObject.asInstanceOf[UriRef]
@@ -132,21 +126,25 @@ class ProfilePanel extends Logging {
 					} catch {
 						case e => {
 							logger.warn("cought exception trying to fetch graph - these graphs should already be in store " + friend, e)
-							new EzMGraph() {
+							new context {
 								friend -- SKOS.note --> ("problem with fetching this node: " + e)
-							}
+							}.graph
 						}
 					}
 				}
-				//vera bad: mixing data from different sources
+				//todo: remove: mixing data from different sources, forced by retos removing of my version of CacheProxy...
 				for (g <- friendInfo) profile.getGraph.addAll(g)
 				profile
 			}
 		})
 
 
-		(profile a   PLATFORM.HeadedPage
-		         a  CONTROLPANEL.ProfilePage)
+		new context(new SimpleMGraph(profile.getGraph)) {
+			val n = ( profile.getNode a PLATFORM.HeadedPage
+		                            a CONTROLPANEL.ProfilePage
+				)
+		}.n
+
 	}
 
 	/**
@@ -288,16 +286,16 @@ class ProfilePanel extends Logging {
 		     val webIdInfo = webIdGraphsService.getWebIdInfo(webidRef);
 		     if (webIdInfo.isLocal)
 		) {
-			val certGraph = new EzMGraph(webIdInfo.localPublicUserData)
-			import certGraph._
-			val certNode = certGraph.bnode
-			( (certNode a  RSA.RSAPublicKey)
-			   -- CERT.identity -->  webidRef
-			   -- RSA.modulus -->  modulus
-			   -- RSA.public_exponent -->  publicExponent
-			   -- DC.date -->  cert.getStartDate )
-			if (comment != null && comment.length > 0) {
-				certNode --  RDFS.comment -->  comment
+			 new context(webIdInfo.localPublicUserData) {
+				val certNode = (
+					(bnode a RSA.RSAPublicKey)
+							-- CERT.identity --> webidRef
+					      -- RSA.modulus --> modulus
+					      -- RSA.public_exponent --> publicExponent
+					      -- DC.date --> cert.getStartDate)
+				if (comment != null && comment.length > 0) {
+					certNode -- RDFS.comment --> comment
+				}
 			}
 		}
 		var resBuild: Response.ResponseBuilder = Response.ok(ser.getContent, MediaType.valueOf(ser.getMimeType))

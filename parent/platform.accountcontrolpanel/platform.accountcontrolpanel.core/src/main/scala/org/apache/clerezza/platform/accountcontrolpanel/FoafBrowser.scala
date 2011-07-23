@@ -26,13 +26,13 @@ import javax.ws.rs.core.Context
 import javax.ws.rs.core.UriInfo
 import collection.JavaConversions._
 import org.slf4j.scala._
-import org.apache.clerezza.rdf.ontologies._
 import org.apache.clerezza.rdf.utils.{UnionMGraph, GraphNode}
 import java.security.{PrivilegedAction, AccessController}
 import org.apache.clerezza.rdf.core._
 import access.TcManager
 import impl.SimpleMGraph
-import org.apache.clerezza.rdf.scala.utils.EzMGraph
+import org.apache.clerezza.rdf.scala.utils._
+import org.apache.clerezza.rdf.ontologies._
 
 object FoafBrowser {
 	def removeHash(uri: UriRef) = {
@@ -65,34 +65,38 @@ class FoafBrowser extends Logging {
 	@GET
 	@Path("person")
 	def viewPerson(@Context uriInfo: UriInfo,
-						@QueryParam("uri") uri: UriRef): GraphNode = {
-		if (uri != null) {//show some error page
-			logger.info("id =="+uri.getUnicodeString)
+						@QueryParam("uri") uriref: UriRef): GraphNode = {
+
+		if (uriref != null) {//show some error page
+			logger.info("id =="+uriref.getUnicodeString)
 		}
 
 		//val foaf = descriptionProvider.fetchSemantics(uri, Cache.Fetch)
 		//so here the initial fetch could be used to decide if information is available at all,
 		//ie, if the URL is accessible, if there are error conditions - try later for example...
 		 val profile = AccessController.doPrivileged(new PrivilegedAction[Graph]() {
-			 def run() = tcManager.getGraph(removeHash (uri))
+			 def run() = tcManager.getGraph(removeHash (uriref))
 		 });
 
-		val inference = new EzMGraph(new UnionMGraph(new SimpleMGraph(),profile))
+		val gr = new context(new UnionMGraph(new SimpleMGraph(),profile)) {
+			//add a bit of inferencing for persons, until we have some reasoning
+			for (kn: Triple <- profile.filter(null, FOAF.knows, null)) {
+				node(kn.getSubject) a FOAF.Person
+				if (kn.getObject.isInstanceOf[NonLiteral])
+					node(kn.getObject) a FOAF.Person
+			}
 
-		import inference._
-		//add a bit of inferencing for persons, until we have some reasoning
-		for (kn: Triple <- profile.filter(null,FOAF.knows,null)) {
-			kn.getSubject a FOAF.Person
-			if (kn.getObject.isInstanceOf[NonLiteral])
-				kn.getObject a FOAF.Person
+			lazy val doc = (
+				node(uriInfo.getRequestUri()).a(PLATFORM.HeadedPage)
+					                       .a(CONTROLPANEL.ProfileViewerPage)
+		            -- FOAF.primaryTopic --> uriref
+			)
 		}
 
 		//todo: if possible get a bit more info about remote profiles, if these are in the db
 
 		//Here we make a BNode the subject of the properties as a workaround to CLEREZZA-447
-		return ( (URItoUriRef(uriInfo.getRequestUri()) a  PLATFORM.HeadedPage
-					a  CONTROLPANEL.ProfileViewerPage)
-		         -- FOAF.primaryTopic --> uri)
+		return gr.doc
 	}
 
 	protected var tcManager: TcManager = null;
