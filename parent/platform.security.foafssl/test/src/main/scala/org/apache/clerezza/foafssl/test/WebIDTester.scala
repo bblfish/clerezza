@@ -678,7 +678,7 @@ abstract class Assertions extends context(new SimpleMGraph())  {
 	/**
 	 * extend this to describe the test and build the test suite
 	 */
-	abstract def describeTests()
+	def describeTests()
 
 	var assertions: List[Assertion] = Nil
 
