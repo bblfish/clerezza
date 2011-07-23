@@ -16,12 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.clerezza.rdf.scala.utils
+// the package starts with test, in order to simulate non package level access
+package test.org.apache.clerezza.rdf.scala.utils
 
 import org.apache.clerezza.rdf.core._
 import impl._
 import org.apache.clerezza.rdf.ontologies._
 import org.junit._
+
+// we don't import all of the package so that we can test package access (not done thoroughly yet)
+import org.apache.clerezza.rdf.scala.utils.context
 
 /**
  * In these test classes the implicit imports are brought in very carefully, as they also need to
