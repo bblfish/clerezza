@@ -26,6 +26,8 @@ import org.apache.clerezza.rdf.utils.GraphNode._
 import org.apache.clerezza.rdf.utils.{GraphNode, UnionMGraph}
 import org.apache.clerezza.rdf.ontologies.RDF
 
+
+
 /**
  * a context for creating and filling up a given graph.
  *

@@ -27,4 +27,6 @@ package org.apache.clerezza.rdf.scala
  * so there is no need to import both the classes and the Preamble.
  * @author bblfish
  */
-package object utils extends TcIndependentConversions
+package object utils extends TcIndependentConversions {
+	type RdfContext = context
+}
