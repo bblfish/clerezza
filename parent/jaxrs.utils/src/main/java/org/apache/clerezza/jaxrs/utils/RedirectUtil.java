@@ -80,4 +80,24 @@ public class RedirectUtil {
 			throw new RuntimeException(ex);
 		}
 	}
+
+	/**
+	 * Redirects to the location provided by uriString in the context
+	 * specified by baseUrl.
+	 *
+	 * @param urlTo url to redirect to
+	 * @return {@link javax.ws.rs.core.Response}
+	 */
+	public static Response createSeeOtherResponse(URI urlTo) {
+
+		String htmlBody = "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\"" +
+				"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">" +
+				"<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\">" +
+				"<body> <a href=\"" + urlTo + "\">" + urlTo + "</a><body></html>";
+		ResponseBuilder responseBuilder = Response.status(Response.Status.SEE_OTHER);
+		responseBuilder = responseBuilder.entity(htmlBody);
+		responseBuilder = responseBuilder.location(urlTo);
+		return responseBuilder.build();
+	}
+
 }
