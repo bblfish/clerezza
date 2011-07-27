@@ -672,7 +672,7 @@ class CertTester(subj: Subject, webIdGraphsService: WebIdGraphsService) extends 
   */
 class Assertor {
 
-	val g = new EzMGraph(new SimpleMGraph)
+	val g = new context(new SimpleMGraph)
 
 	var assertions: List[Assertion] = Nil
 
