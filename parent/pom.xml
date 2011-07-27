@@ -9,7 +9,7 @@
 	<version>0.2-incubating-SNAPSHOT</version>
 	<description>The direct or indirect parent of all Clerezza Artifacts</description>
 	<properties>
-		<scala.version>2.8.1</scala.version>
+		<scala.version>2.9.0-1</scala.version>
 	</properties>
 	<licenses>
 		<license>
@@ -33,6 +33,7 @@
 				<module>ext.org.json.simple</module>
 				<module>ext.org.ops4j.pax.swissbox.tinybundles</module>
 				<module>ext.org.apache.lucene</module>
+				<module>ext.scala.tools.jline</module>
 				<module>slf4j-scala-api</module>
 				<module>internal.archetype</module>
 				<module>scala-scripting</module>
@@ -120,7 +121,7 @@
 				<module>templating.seedsnipe</module>
 				<module>tools.offline</module>
 				<module>triaxrs</module>
-				<module>uima</module>
+              <!-- temporarly, waiting for releases <module>uima</module> -->
 				<module>utils.customproperty</module>
 				<module>utils.imageprocessing</module>
 				<module>utils</module>
@@ -421,6 +422,11 @@
 	</dependencies>
 	<dependencyManagement>
 		<dependencies>
+			<dependency>
+    				<groupId>org.scala-lang</groupId>
+    				<artifactId>jline</artifactId>
+    				<version>2.9.0-1</version>
+			</dependency>
 			<dependency>
 				<groupId>junit</groupId>
 				<artifactId>junit</artifactId>

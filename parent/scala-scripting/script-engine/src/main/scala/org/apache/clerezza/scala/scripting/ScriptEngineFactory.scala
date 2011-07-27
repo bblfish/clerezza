@@ -36,6 +36,7 @@ import javax.script.ScriptContext
 import javax.script.{ScriptEngineFactory => JavaxEngineFactory, Compilable, 
 					 CompiledScript, ScriptEngine, AbstractScriptEngine, Bindings,
 					 SimpleBindings, ScriptException}
+
 //import scala.collection.immutable.Map
 import scala.actors.DaemonActor
 import scala.tools.nsc._;
@@ -71,12 +72,12 @@ class ScriptEngineFactory() extends  JavaxEngineFactory with BundleListener  {
 
 	//methods from ScriptEngineFactory
 	override def getEngineName() = "Scala Scripting Engine for OSGi"
-	override def getEngineVersion() = "0.2/scala 2.8.1"
+	override def getEngineVersion() = "0.3/scala 2.9.0-1"
 	override def getExtensions() = java.util.Collections.singletonList("scala")
 	override def getMimeTypes() = java.util.Collections.singletonList("application/x-scala")
 	override def getNames() = java.util.Collections.singletonList("scala")
 	override def getLanguageName() = "Scala"
-	override def getLanguageVersion ="2.8.1"
+	override def getLanguageVersion ="2.9.0-1"
 	override def getParameter(key : String) = {
 		key match {
 			case ScriptEngine.ENGINE => getEngineName
@@ -157,12 +158,11 @@ class ScriptEngineFactory() extends  JavaxEngineFactory with BundleListener  {
 									interpreter.bind(entry._1,
 													 getAccessibleClass(entry._2.getClass).getName, entry._2)
 								}
-								val result = interpreter.eval[Object](script) match   {
-									case Some(x) => x
-									case None => null
-								}
-								if (interpreter.reporter.hasErrors) {
-									throw new ScriptException("some error","script-file",1)
+								def err(msg: String) =  throw new ScriptException(msg,"script-file",1)
+								val result = interpreter.interpret(script) match   {
+									case Results.Error => err("some error")
+                           case Results.Incomplete =>err("incomplete statement")
+                           case Results.Success => interpreter.valueOfTerm( interpreter.mostRecentVar ).getOrElse(null)
 								}
 								sender ! result
 							} catch {

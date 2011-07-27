@@ -38,7 +38,9 @@ import javax.script.{ScriptEngineFactory => JavaxEngineFactory, Compilable,
 					 CompiledScript, ScriptEngine, AbstractScriptEngine, Bindings,
 					 SimpleBindings, ScriptException}
 import jline.CandidateListCompletionHandler
-import jline.{CompletionHandler, Completor, Terminal, ConsoleReader, ArgumentCompletor, History => JHistory}
+import jline.{CompletionHandler, Completor, Terminal, ConsoleReader, ArgumentCompletor}
+
+//History => JHistory
 import java.util.{ArrayList, Arrays}
 
 //import scala.collection.immutable.Map
@@ -57,6 +59,7 @@ import scala.actors.Actor
 import scala.actors.Actor._
 import org.apache.clerezza.scala.scripting._
 import java.io.File
+import scala.tools.nsc.interpreter.session.{JLineHistory => History}
 import org.slf4j.scala.Logging
 
 class Shell(factory: InterpreterFactory, val inStream: InputStream, 
@@ -72,41 +75,43 @@ class Shell(factory: InterpreterFactory, val inStream: InputStream,
 
 	val interpreterLoop = new InterpreterLoop(new BufferedReader(new InputStreamReader(inStream)), new PrintWriter(out, true)) {
 		override def createInterpreter() {
-			interpreter = factory.createInterpreter(out)
-			interpreter.beQuietDuring {
+			intp = factory.createInterpreter(out)
+			intp.beQuietDuring {
 				for (binding <- bindings) {
-					interpreter.bind(binding._1, binding._2, binding._3)
+					intp.bind(binding._1, binding._2, binding._3)
 				}
 				for (v <- imports) {
-					interpreter.interpret("import "+v)
+					intp.interpret("import "+v)
 				}
 			}
 		}
 
 		override val prompt = "zz>"
 
-		override val standardCommands: List[Command] = {
-			import CommandImplicits._
+		override lazy  val standardCommands: List[LoopCommand] = {
+			import LoopCommand._
+			import Result._
 			(for (shellCommand <- shellCommands) yield {
-					LineArg(shellCommand.command, shellCommand.description, (line: String)=> {
+					new NullaryCmd(shellCommand.command, shellCommand.description, (line: String)=> {
 							val (continue, linesToRecord) = shellCommand.execute(line, Shell.this.out)
 							Result(continue, linesToRecord)
 						})
 				}).toList :::
 			List(
-				NoArgs("help", "print this help message", printHelp),
-				VarArgs("history", "show the history (optional arg: lines to show)", printHistory),
-				LineArg("h?", "search the history", searchHistory),
-				OneArg("load", "load and interpret a Scala file", load),
-				NoArgs("power", "enable power user mode", power),
-				NoArgs("quit", "terminate the console shell (use shutdown to shut down clerezza)", () => Result(false, None)),
-				NoArgs("replay", "reset execution and replay all previous commands", replay),
-				LineArg("sh", "fork a shell and run a command", runShellCmd),
-				NoArgs("silent", "disable/enable automatic printing of results", verbosity)
+				cmd("help",  "[command]","print this help message", helpCommand),
+            historyCommand,
+				cmd("h?","<string>", "search the history", searchHistory),
+				cmd("load", "<path>","load and interpret a Scala file", loadCommand),
+				nullary("power", "enable power user mode", powerCmd),
+				nullary("quit", "terminate the console shell (use shutdown to shut down clerezza)", () => Result(false, None)),
+				nullary("replay", "reset execution and replay all previous commands", replay),
+				shCommand,
+				nullary("silent", "disable/enable automatic printing of results", verbosity)
 			)
 		}
 
-		override def printHelp() = {
+/*
+		def printHelp() = {
 			out println "This is a scala based console, it supports any Scala expression, as well as the command described below."
 			out println "To access an OSGi service use $[interface]."
 			out println ""
@@ -120,41 +125,42 @@ class Shell(factory: InterpreterFactory, val inStream: InputStream,
 				out println ("import "+v)
 			}
 			out println ""
-			super.printHelp()
+			super.printWelcome()
 		}
+*/
 
 
-		override def main(settings: Settings) {
+/*		override def process(settings: Settings) {
 			this.settings = settings
 			createInterpreter()
 
-			// sets in to some kind of reader depending on environmental cues
+//			sets in to some kind of reader depending on environmental cues
 			in = new InteractiveReader() {
 
 				override lazy val history = Some(History(consoleReader))
-				override lazy val completion = Option(interpreter) map (x => new Completion(x))
+				override lazy val completion = Option(intp) map (x => new Completion(x))
 
 				val consoleReader = {
 					val terminal = new jline.UnixTerminal
-					/*val terminal = new jline.Terminal {
-						override def initializeTerminal() {logger.warn("JLINE: initializing echo")}
-
-						override def isEchoEnabled =  { logger.warn("JLINE: is enabled echo")
-						true}
-
-						override def isSupported = { logger.warn("JLINE: is supported echo")
-						true}
-
-						override def enableEcho() { logger.warn("JLINE: enabling echo")}
-
-						override def disableEcho() {logger.warn("JLINE: disabling echo") }
-
-						override def getTerminalHeight = 24
-
-						override def getTerminalWidth = 80
-
-						override def getEcho = false
-					}*/
+//					val terminal = new jline.Terminal {
+//						override def initializeTerminal() {logger.warn("JLINE: initializing echo")}
+//
+//						override def isEchoEnabled =  { logger.warn("JLINE: is enabled echo")
+//						true}
+//
+//						override def isSupported = { logger.warn("JLINE: is supported echo")
+//						true}
+//
+//						override def enableEcho() { logger.warn("JLINE: enabling echo")}
+//
+//						override def disableEcho() {logger.warn("JLINE: disabling echo") }
+//
+//						override def getTerminalHeight = 24
+//
+//						override def getTerminalWidth = 80
+//
+//						override def getEcho = false
+//					}
 					val r = new jline.ConsoleReader(inStream, out, null, terminal)
 					r setHistory (History().jhistory)
 					r setBellEnabled false
@@ -179,7 +185,7 @@ class Shell(factory: InterpreterFactory, val inStream: InputStream,
 							true
 						}
 					}
-				  
+
 				  r addCompletor new Completor {
 						def complete(p1: String, p2: Int, candidates: java.util.List[_]) = {
 							logger.warn("JLINE: candidates : "+candidates)
@@ -215,11 +221,13 @@ class Shell(factory: InterpreterFactory, val inStream: InputStream,
 				// our best to look ready.  Ideally the user will spend a
 				// couple seconds saying "wow, it starts so fast!" and by the time
 				// they type a command the compiler is ready to roll.
-				interpreter.initialize()
-				repl()
+				intp.initialize()
+				loop()
 			}
 			finally closeInterpreter()
+			true
 		}
+*/
 
 		override def printWelcome() {
 			import Properties._
@@ -231,13 +239,19 @@ class Shell(factory: InterpreterFactory, val inStream: InputStream,
 				|Type :help for more information.""" .
 			stripMargin.format(versionString, javaVmName, javaVersion)
 
-			plushln(welcomeMsg)
+         echo(welcomeMsg)
 		}
+
+		private def echo(msg: String) = {
+		  out println msg
+		  out.flush()
+		}
+
 	}
 	val console: Actor = new DaemonActor {
 		def act() {
 			try {
-				interpreterLoop.main(Array[String]())
+				interpreterLoop.process(Array[String]())
 			} finally {
 				for (l <- terminationListeners) {
 					l.terminated

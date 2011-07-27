@@ -29,6 +29,8 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+
+import com.sun.tools.example.debug.bdi.WatchpointSpec;
 import org.apache.clerezza.utils.IteratorMerger;
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Reference;
@@ -200,7 +202,14 @@ public class PermissionGatherer implements BundleListener {
 				String className = url.getPath();
 				int indexOfLastDot = className.lastIndexOf(".");
 				className = className.replaceAll("/", ".").substring(1, indexOfLastDot);
-				Class<?> clazz = bundle.loadClass(className);
+				Class<?> clazz;
+				try {
+				    clazz = bundle.loadClass(className);
+				} catch (Error e) {
+					logger.info("was trying to load "+url.toExternalForm()+ " in bundle "+bundle.getSymbolicName() +
+							" version "+bundle.getVersion().toString(),e);
+					throw e;
+				}
 				if (Permission.class.isAssignableFrom(clazz)) {
 					PermissionInfo permissionInfo = clazz.getAnnotation(PermissionInfo.class);
 					if (permissionInfo != null) {

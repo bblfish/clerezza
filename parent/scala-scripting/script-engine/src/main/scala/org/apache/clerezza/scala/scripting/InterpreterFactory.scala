@@ -42,7 +42,7 @@ class InterpreterFactory() {
 		bundleContext = null
 	}
 
-	def createInterpreter(out: PrintWriter) : Interpreter = {
+	def createInterpreter(out: PrintWriter) : scala.tools.nsc.Interpreter = {
 		val i = new BundleContextScalaInterpreter(bundleContext, out)
 		i
 	}
