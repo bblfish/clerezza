@@ -18,11 +18,7 @@
  */
 package org.apache.clerezza.triaxrs.util;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 
 import javax.ws.rs.core.Cookie;
 import javax.ws.rs.core.HttpHeaders;
@@ -124,6 +120,13 @@ public class HttpHeadersImpl implements HttpHeaders {
 
 	@Override
 	public List<String> getRequestHeader(String name) {
+		if ("ssl_session_id".equals(name)) {
+		  //workaround for there being no method to pass the session id back in this version of jsr311
+		  String id = (String)request.getWrhapiRequest().getAttribute("javax.servlet.request.ssl_session_id");
+		  List answer = new LinkedList<String>();
+		  answer.add(id);
+		  return answer;
+		}
 		return request.getHeaders().get(name);
 	}
 

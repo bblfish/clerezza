@@ -135,6 +135,10 @@ public class RequestImpl implements Request {
 	public X509Certificate[] getCertificates() {
 		return null;
 	}
+
+	public Object getAttribute(String id) {
+		return null;
+	}
     
   
 }
