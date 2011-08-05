@@ -957,6 +957,11 @@
 				<artifactId>platform.security.foafssl.ontologies</artifactId>
 				<version>0.1-incubating-SNAPSHOT</version>
 			</dependency>
+	               <dependency>
+        	                <groupId>org.apache.clerezza</groupId>
+                	        <artifactId>platform.security.foafssl.identity-provider</artifactId>
+				<version>0.1-incubating-SNAPSHOT</version>
+               	 	</dependency>
 			<dependency>
 				<groupId>org.jsslutils</groupId>
 				<artifactId>jsslutils</artifactId>

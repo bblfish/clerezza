@@ -21,32 +21,44 @@ package org.apache.clerezza.foafssl.idp
 
 import org.slf4j.scala.Logging
 import java.text.SimpleDateFormat
-import java.security.cert._
 import org.apache.clerezza.foafssl.ontologies.{RSA, WEBIDPROVIDER, CERT}
 import java.security.interfaces.{RSAPrivateKey, RSAPublicKey}
-import collection.immutable.StringOps
 import org.apache.clerezza.rdf.scala.utils._
 import javax.ws.rs._
-import core.{MultivaluedMap, UriInfo, Context, Response}
+import core._
 import org.apache.clerezza.platform.security.UserUtil
 import org.apache.clerezza.platform.security.auth.WebIdPrincipal
-import java.net.{URL, URLEncoder}
-import java.security.{Signature, KeyStore}
-import org.apache.clerezza.rdf.core.impl.util.Base64
 import org.apache.clerezza.jaxrs.utils.RedirectUtil
-import collection.mutable.Set
-import org.apache.clerezza.rdf.ontologies.FOAF
-import org.apache.clerezza.rdf.utils.GraphNode
 import org.osgi.service.component.ComponentContext
-import javax.xml.ws.RequestWrapper
-import org.apache.clerezza.utils.Uri
-import org.apache.clerezza.rdf.core.UriRef
-import java.lang.reflect.Constructor
-import java.lang.Boolean
-import com.sun.xml.internal.bind.v2.model.annotation.AnnotationSource
-import java.util.{List, Calendar}
-import apple.laf.JRSUIState.ValueState
+import org.bouncycastle.openssl.PEMWriter
+import java.io.StringWriter
+import org.apache.clerezza.rdf.ontologies.{PLATFORM, FOAF}
+import org.apache.clerezza.foafssl.auth.X509Claim
+import org.apache.clerezza.rdf.core.access.TcManager
+import java.security.{PrivilegedAction, AccessController, Signature, KeyStore}
+import org.apache.clerezza.rdf.utils.UnionMGraph
+import org.apache.clerezza.platform.users.WebIdGraphsService
+import org.apache.clerezza.rdf.core.impl.{SimpleMGraph, TripleImpl, SimpleGraph}
+import org.apache.clerezza.foafssl.ssl.X509TrustManagerWrapperService
+import java.net.{URI, URL, URLEncoder}
+import java.math.BigInteger
+import java.util.Calendar
+import java.security.cert._
+import org.apache.clerezza.rdf.core.{Literal, UriRef, Graph}
+import org.apache.commons.codec.binary.Base64
+import collection.immutable.{Set, WrappedString, StringOps}
+import javax.security.auth.Subject
 
+
+object IdentityProvider {
+	def removeHash(uri: UriRef) = {
+		val uriStr =uri.getUnicodeString
+		val hashpos = uriStr.indexOf("#")
+		if (hashpos>0)  new UriRef(uriStr.substring(0,hashpos))
+		else uri
+	}
+	val EMPTY_LIST = new java.util.LinkedList[String]()
+}
 
 /**
  * A service that allows remote users to authenticate on this
@@ -60,11 +72,11 @@ class IdentityProvider extends Logging {
 
 	import org.apache.clerezza.foafssl.ssl.Activator._
 	import collection.JavaConversions._
-	import org.apache.clerezza.rdf.scala.utils._
+	import IdentityProvider._
 
 	var keyPair: KeyPair = null
 
-	class KeyPair(val privKey: RSAPrivateKey, val cert: Certificate ) {
+	class KeyPair(val privKey: RSAPrivateKey, val cert: Certificate ) extends RdfContext {
 		val pubKey = cert.getPublicKey.asInstanceOf[RSAPublicKey]
 
 		val sigAlg = privKey.getAlgorithm match {
@@ -77,19 +89,31 @@ class IdentityProvider extends Logging {
 
 		signature.initSign(privKey)
 
-	   val eg=  new EzMGraph()
 
-		private def publicKeyGrph = (
-			eg.bnode.a( RSA.RSAPublicKey)
-				-- RSA.modulus --> { val pkstr = pubKey.getModulus.toString(16)
-								new StringOps(if (pkstr.size % 2 == 0)  pkstr  else " "+pkstr ).
-									  grouped(2).foldRight("")(_+":"+_)^^CERT.hex
+		val pubKeyPem = {
+			val pemw = new StringWriter()
+			val pemWriter = new PEMWriter(pemw);
+         pemWriter.writeObject(pubKey);
+         pemWriter.flush();
+			new WrappedString(pemw.toString).linesIterator.filter(s=>(! s.startsWith("---"))).mkString("\n")
+		}
+
+		private def publicKeyNode = (
+			bnode.a( RSA.RSAPublicKey)
+				-- RSA.modulus --> {
+						val pkstr = pubKey.getModulus.toString(16)
+						val mod = new StringOps(if (pkstr.size % 2 == 0) pkstr else " " + pkstr).
+							grouped(2).foldRight("")(_ + ":" + _).grouped(63).foldRight("")(_+"\n"+_)
+						mod^^CERT.hex
 					  }
 				-- RSA.public_exponent --> ( pubKey.getPublicExponent.toString^^CERT.int_  )
+			   -- CERT.base64der --> pubKeyPem
 			)
 
-			val serviceGraph = (eg.bnode.a( WEBIDPROVIDER.IDPService)
-												  -- WEBIDPROVIDER.signingKey --> publicKeyGrph
+		val serviceGraph = (
+				bnode.a( WEBIDPROVIDER.IDPService)
+					  .a(PLATFORM.HeadedPage)
+						  -- WEBIDPROVIDER.signingKey --> publicKeyNode
 					)
 
 		def sign(message: String) = synchronized {
@@ -139,39 +163,142 @@ class IdentityProvider extends Logging {
 
 	}
 
+	/**
+	 * server request of client logout using TLS
+	 * @param uriInfo path info for this request
+	 * @param headers of the request for the Referer field
+	 */
+	@POST
+	@Path("logout")
+	def logout(@Context uriInfo: UriInfo, @Context headers: HttpHeaders,
+	           @FormParam("certsig") reqCertSig: String,
+		        @FormParam("session") reqSession: String,
+		        @FormParam("authreqissuer") authreqissuer: String, //
+	           @FormParam("rs") rs: String, //same as authrequissuer
+		        @FormParam("pause") pause: String): Response = {
 
-	def displayProfile(ids: Set[WebIdPrincipal], relyingPartySrvc: URL) = {
-		val eg = new EzMGraph()
-		val profile = (eg.bnode.a(WEBIDPROVIDER.ProfileSelector)
-			-- FOAF.primaryTopic -->> ids.map(f=>f.getWebId)
-			-- WEBIDPROVIDER.relyingParty --> relyingPartySrvc
-			-- WEBIDPROVIDER.authLink --> createSignedResponse(ids, relyingPartySrvc)
-			)
-		Response.ok(profile).build()
-	}
+		val relyingService = if (null != rs && "" != rs ) rs else authreqissuer
 
-
-	def userPrincipals: Set[WebIdPrincipal] = {
-		val subject = UserUtil.getCurrentSubject();
-		val principals = subject.getPrincipals collect {
-			case wid: WebIdPrincipal => wid
+		def responseUrl: scala.StringBuilder = {
+			val urlbuilder = new StringBuilder(300, "/srvc/webidp?") //the signature takes a lot of space
+			if (relyingService != null) urlbuilder append "rs=" append URLEncoder.encode(relyingService,"UTF-8") append "&"
+			if (pause != null) urlbuilder append "pause=true&"
+			urlbuilder
 		}
-		principals
+
+
+		//1. we only try to break a session when it is shown that the request comes from a page made in the
+		//    same session. Ie. we try to only break the session the user wanted breaking.
+		val session = headers.getRequestHeader("ssl_session_id")
+		val redirectLoc = if (session.contains(reqSession)) {
+	      //then we are in the same session and we can break it
+	      val subj = UserUtil.getCurrentSubject
+		   session.foreach(s=>tlsTM.breakConnectionFor(s,subj))
+
+	      val answerTo = responseUrl
+
+	      //but we pass the signature of this certificate in the response, so that on receiving the redirect request
+	      //we can clear the cache, if by that time the certificate has changed - which it should have, since we just
+			//broke the session above.
+			val sig = subj.getPublicCredentials(classOf[X509Claim]).map(x509c=>
+				Base64.encodeBase64URLSafeString(x509c.cert.getSignature))
+	      sig.foreach(sig=>answerTo append  "ocs="+sig+"&")
+	      answerTo.toString()
+      } else {
+	      responseUrl.toString()
+      }
+
+
+		//3. set up redirect
+
+		val response = RedirectUtil.createSeeOtherResponse(redirectLoc, uriInfo)
+
+		//4. make sure TCP connection  will be broken
+		response.getMetadata.add("Connection","close")
+
+		response
 	}
+
 
 	/**
-	 * Sadly jax-rs does not do pattern matching on attributes passed to select best method
-	 * So we do this here in a method.
+	 * Display a simple profile of the user gathered from his WebId, with links to allow him to
+	 * <ul><li>switch identity</li>
+	 *     <li>information to what may be wrong with his WebID Certificate</li>
+	 *     <li>a button to login to the Relying Party when satisfied</li>
+	 * </ul>
+	 *
+	 * @param relyingPartySrvc the url to login when satisfied
+	 * @param sessions the TLS session used in building this page, passed as a string as
+	 *    specified by the "javax.servlet.request.ssl_session_id" attribute in the Servlet 3.0 API.
+	 *    This needed so the breaking of the session can be tied to the one shown in displaying this page, and not
+	 *    some session that may be the one used when this form is posted to the server
 	 */
-	@GET
-	def request(@Context uriInfo: UriInfo) {
-		val params = asScalaMap[String,java.util.List[String]](uriInfo.getQueryParameters)
-		for (keyVal <- params) yield keyVal match {
-			case ("authreqissuer",lst) => {}
+	def displayProfile(relyingPartySrvc: URL, sessions: Iterable[String]) = {
+		val ids=userPrincipals()
+		val webids = ids.map(f=>f.getWebId)
 
+		val profiles = AccessController.doPrivileged(new PrivilegedAction[UnionMGraph]() {
+			def run() = {
+				val graphs =for (uri <- webids) yield {
+//					tcManager.getGraph(removeHash(uri))
+				   new RichGraphNode(uri, webIdService.getWebIdInfo(uri).publicProfile).getNodeContext
+				}
+				//todo: UnionMGraph should be changed to make it easier to append a graph to a list
+				new UnionMGraph(new SimpleMGraph()::graphs.toList : _*) //put the graphs together and add a buffer in front for writing
+			}
+		});
+
+		val cnt= new context(profiles) {
+			val profileGn: RichGraphNode = (
+				bnode.a(WEBIDPROVIDER.ProfileSelector)
+					  .a(PLATFORM.HeadedPage)
+					-- FOAF.primaryTopic -->> webids
+					-- WEBIDPROVIDER.relyingParty --> relyingPartySrvc
+					-- WEBIDPROVIDER.authLink --> createSignedResponse(ids, relyingPartySrvc)
+				   -- WEBIDPROVIDER.sessionId -->> sessions.map(s=>new EzLiteral(s))
+				)
 		}
+		val p=cnt.profileGn
+		val rb=Response.ok(p)
+		rb.build()
 	}
 
+
+	/**
+	 * Entry point for any of the GET requests.
+	 * Theses can be either <ul>
+	 *  <li> a simple service information page</li>
+	 *  <li> a profile viewing page</li>
+	 *  <li> or an automatic authentication redirect </li>
+	 * </ul>
+	 * @param uriInfo passes all the parameter information
+	 * @param headers needed for to get the ssl-session id for the profile page
+	 */
+	@GET
+	def request(@Context uriInfo: UriInfo, @Context headers: HttpHeaders): Response = {
+		val params: scala.collection.Map[String,java.util.List[String]] = uriInfo.getQueryParameters
+
+		val relyingPartySrvcs = params.getOrElse("rs",EMPTY_LIST).
+			flatMap(v => try {Option(new URL(v))} catch {case _ => None})
+
+		val pause = params.contains("pause")
+
+		if (Nil == relyingPartySrvcs) infoPage()
+		else if (pause) {
+			val oldSigStr = params.getOrElse("ocs",EMPTY_LIST)
+			if (oldSigStr.size() > 0) {
+				val oldSig =oldSigStr.map(sig => Base64.decodeBase64(sig)).toSet
+				val nowSig = x509Creds.map(claim => claim.cert.getSignature)
+				if (!oldSig.containsAll(nowSig)) { //really these only containers contain only one or none
+					//then the certificate has been changed, and one can remove the blocking of the old cert from the DB
+					//this is in order to avoid having the certificate block changes later
+					tlsTM.clearBreak(oldSig.head)
+				}
+			}
+			displayProfile(relyingPartySrvcs.head,headers.getRequestHeader("ssl_session_id"))
+		}
+		else authenticate(relyingPartySrvcs.head)
+	}
 
 
 //	def init[T](clzz: Class[T], params: MultivaluedMap[String,String]) = {
@@ -189,9 +316,6 @@ class IdentityProvider extends Logging {
 //
 //	}
 
-	case class params(@QueryParam("authreqissuer") relyingPartySrvc: Option[URL],
-		               @QueryParam("pause") pause: Boolean)
-
 	/**
 	 * A very simple GET returns an info page, explaining how the service works and what the public key
 	 * is.
@@ -200,27 +324,38 @@ class IdentityProvider extends Logging {
 		Response.ok(keyPair.serviceGraph).build()
 	}
 
-	/**
-	 * If the authreqissuer field is set then this service will redirect immediately to the
-	 * requestor with identity information if it exists
-	 * (what should it do if there is none?)
-	 */
-//	def authenticate(@QueryParam("authreqissuer") relyingPartySrvc: URL ): Response = {
-//		if (null == relyingPartySrvc) return infoPage()
-//		val url = createSignedResponse(userPrincipals,relyingPartySrvc)
-//		RedirectUtil.createSeeOtherResponse(url)
-//	}
+	def userPrincipals(): scala.collection.mutable.Set[WebIdPrincipal] = {
+		val subject = UserUtil.getCurrentSubject();
+		val principals = subject.getPrincipals collect {
+			case wid: WebIdPrincipal => wid
+		}
+		principals
+	}
+
+	def x509Creds() =  asScalaSet(UserUtil.getCurrentSubject.getPublicCredentials(classOf[X509Claim]))
 
 	/**
-	 * response on get when authrequestissuer and pause is set
-	 *
-	 * @param pause if true then pause on a profile page to let the user select if he wishes to login
+	 * redirect to the requestor with identity information and sign it
 	 */
-//	def authenticate(@QueryParam("authreqissuer") relyingPartySrvc: URL ,
-//		     @QueryParam("pause") pause: Boolean): Response = {
-//		if (pause) displayProfile(userPrincipals,relyingPartySrvc)
-//		else authenticate(relyingPartySrvc)
-//	}
+	private def authenticate(relyingPartySrvc: URL): Response = {
+		val ids = userPrincipals()
+		val url = if (0==ids.size) {
+			val creds = x509Creds().iterator
+			val uriStr = if (creds.hasNext) "?error=nocert"
+			else {
+				val claim: X509Claim = creds.next
+				if (claim.webidclaims.size == 0) "?error=noWebId"
+				else "?error=noVerfiedWebId"
+				//todo missing: how to send errors that occur along the line. ie we are missing "?IdPError=..."
+			}
+			new URL(relyingPartySrvc,uriStr)
+		} else {
+		  createSignedResponse(userPrincipals,relyingPartySrvc)
+		}
+		RedirectUtil.createSeeOtherResponse(url.toURI)
+	}
+
+
 
 	/**
 	 * @param verifiedWebIDs
@@ -240,11 +375,40 @@ class IdentityProvider extends Logging {
 			(wid,str) => "webid="+  URLEncoder.encode(wid.getWebId.getUnicodeString, "UTF-8")+"&"
 		}
 		uri = uri + "ts=" + URLEncoder.encode(dateFormat.format(Calendar.getInstance.getTime), "UTF-8")
-		val signedUri =	uri +"&sig=" + URLEncoder.encode(new String(Base64.encode(keyPair.sign(uri))), "UTF-8")
+		val signedUri =	uri +"&sig=" + URLEncoder.encode(new String(Base64.encodeBase64URLSafeString(keyPair.sign(uri))), "UTF-8")
 		return new URL(replyTo,signedUri)
 	}
 
 	private val dateFormat: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
 
+	protected var tcManager: TcManager = null;
+
+	protected def bindTcManager(tcManager: TcManager) = {
+		this.tcManager = tcManager
+	}
+
+	protected def unbindTcManager(tcManager: TcManager) = {
+		this.tcManager = null
+	}
+
+	protected var webIdService: WebIdGraphsService = _
+
+	protected def bindWebIDService(service: WebIdGraphsService) {
+		this.webIdService = service
+	}
+
+	protected def unbindWebIDService(service: WebIdGraphsService) {
+		this.webIdService = null
+	}
+
+	protected var tlsTM: X509TrustManagerWrapperService = _
+
+	protected def bindTLSEndPoint(tlsendpoint: X509TrustManagerWrapperService) {
+		this.tlsTM = tlsendpoint
+	}
+
+	protected def unbindTLSEndPoint(tlsendpoint: X509TrustManagerWrapperService) {
+		this.tlsTM = tlsendpoint
+	}
 
 }

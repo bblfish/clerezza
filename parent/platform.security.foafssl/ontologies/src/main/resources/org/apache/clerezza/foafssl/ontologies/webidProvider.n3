@@ -40,3 +40,14 @@
     rdfs:domain :IDPService ;
     rdfs:range cert:PublicKey .
 
+:sessionId a rdf:Property;
+    rdfs:subPropertyOf rdfs:comment;
+    rdfs:comment """relates the page to The server session used to create the page.  
+    This is written in  servlet 3.0 notation as a string, as  specified by the servlet 3.0 spec 
+    in its javax.servlet.request.ssl_session_id attribute. """;
+    skos:note """this information has no global value, and should be discarded, which is why it is a subrelation. 
+               of rdfs:comment. This is useful for breaking web browser sessions. Robots can change those very
+               easily  """;
+    rdfs:domain foaf:Document;
+    rdfs:range xsd:String .
+

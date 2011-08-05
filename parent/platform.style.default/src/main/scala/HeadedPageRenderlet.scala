@@ -41,7 +41,7 @@ resultDocModifier.addScriptReference("/scripts/modification-status.js");
 resultDocModifier.addScriptReference("/scripts/login.js");
 resultDocModifier.addScriptReference("/scripts/status-message.js");
 <html xmlns="http://www.w3.org/1999/xhtml">
-	<head>
+	<head id="head">
 		{(res/DISCOBITS.contains).find(e => ((e/DISCOBITS.pos*) == "0")) match {
 				case Some(e) => <title>{render(e/DISCOBITS.holds, "naked")}</title>
 				case None => <title>{defaultTitle(res)}</title>
