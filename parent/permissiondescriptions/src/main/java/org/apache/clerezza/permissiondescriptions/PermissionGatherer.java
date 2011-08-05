@@ -30,7 +30,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
-import com.sun.tools.example.debug.bdi.WatchpointSpec;
 import org.apache.clerezza.utils.IteratorMerger;
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Reference;
