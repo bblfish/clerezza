@@ -1,0 +1,21 @@
+This is the bblfish branch of the Apache version of Clerezza ( http://clerezza.org/ ).
+This branch is geared towards Social Web development as explained by http://bblfish.net/ 
+Please clone the github repository and notify https://github.com/bblfish/clerezza
+of changes you want integrated.
+
+It currently requires following three Web Request Handler API projects to be built first, until the patches find their way back to their main repositories. 
+
+$ git clone git@github.com:bblfish/wymiwyg-wrhapi.git
+$ cd wymiwyg-wrhapi.git
+$ mvn clean install -Dgpg.skip=true 
+
+$ git clone git@github.com:bblfish/wymiwyg-wrhapi-osgi.git
+$ cd wymiwyg-wrhapi-osgi
+$ mvn clean install -Dgpg.skip=true 
+
+$ git clone git@github.com:bblfish/wymiwyg-wrhapi-jetty.git
+$ cd wymiwyg-wrhapi-jetty
+$ mvn clean install -Dgpg.skip=true -Dmaven.test.skip=true
+
+Java7 should be used for development here.
+
