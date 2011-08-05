@@ -221,6 +221,9 @@ object X509Claim {
 class X509Claim(val cert: X509Certificate) extends Refreshable {
 
   import X509Claim._
+  val claimReceivedDate = new Date();
+  lazy val tooLate = claimReceivedDate.after(cert.getNotAfter())
+  lazy val tooEarly = claimReceivedDate.before(cert.getNotBefore())
 
   /* a list of unverified principals */
   lazy val webidclaims = getClaimedWebIds(cert).map {
@@ -244,14 +247,11 @@ class X509Claim(val cert: X509Certificate) extends Refreshable {
   def refresh() {
   }
 
-  /* The certificate is currently within the valid timzone */
+  /* The certificate is currently within the valid time zone */
   override
-  def isCurrent(): Boolean = {
-    val now = new Date();
-    if (now.after(cert.getNotAfter())) return false
-    if (now.before(cert.getNotBefore())) return false
-    return true;
-  }
+  def isCurrent(): Boolean = !(tooLate||tooEarly)
+
+   lazy val error = {}
 
 
   /**verify all the webids in the X509 */

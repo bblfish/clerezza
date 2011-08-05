@@ -80,7 +80,7 @@ class Activator() {
 	protected def unbindX509TrustManagerWrapperService(s: X509TrustManagerWrapperService)  = {
 		x509TrustManagerWrapperService = null
 	}
-	
+	//registering the SSLContext service should start the https service -- org.wymiwyg.jetty.httpservice.Activator does for example
 	protected def activate(context: ComponentContext) = {
     try{
       val bundleContext = context.getBundleContext
@@ -93,10 +93,10 @@ class Activator() {
                     getServerCertKeyStore(bundleContext));//getCaKeyStore());
             sslContextFactory
                     .setTrustManagerWrapper(x509TrustManagerWrapperService);
-  
+	     val sslContext = sslContextFactory.buildSSLContext("TLS")
+	     x509TrustManagerWrapperService.setSslContext(sslContext)
 
-        bundleContext.registerService(classOf[SSLContext].getName,
-                        sslContextFactory.buildSSLContext("TLS"), new Properties())
+        bundleContext.registerService(classOf[SSLContext].getName, sslContext, new Properties())
         println("Registered SSLContext+")
       }
     }
@@ -108,6 +108,6 @@ class Activator() {
 	
 	
 
-		}
+}
 
 
