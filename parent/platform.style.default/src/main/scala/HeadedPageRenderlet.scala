@@ -38,6 +38,7 @@ resultDocModifier.addScriptReference("/jquery/jquery-1.3.2.min.js");
 resultDocModifier.addScriptReference("/jquery/jquery.panel.js");
 resultDocModifier.addScriptReference("/style/scripts/panel.js");*/
 resultDocModifier.addScriptReference("/scripts/modification-status.js");
+resultDocModifier.addScriptReference("/scripts/login.js");
 resultDocModifier.addScriptReference("/scripts/status-message.js");
 <html xmlns="http://www.w3.org/1999/xhtml">
 	<head>
@@ -79,10 +80,10 @@ resultDocModifier.addScriptReference("/scripts/status-message.js");
 									}
 							if((userName).equals("anonymous")) {
 								<span>
-									<a href="#" id="tx-login-button">login</a>
+									<a href="/login" id="tx-login-button" onclick="return login()">login</a>
 								</span>
 							} else {
-								<span><a href={"/user/" + userName + "/control-panel"}>{displayName}</a>|<a href="/logout">logout</a></span>
+								<span><a href={"/user/" + userName + "/control-panel"}>{displayName}</a>|<a href="/logout" onclick="return logout();">logout</a></span>
 							}
 						}
 				</div>
