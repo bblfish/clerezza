@@ -162,8 +162,8 @@ public class ResultDocModifier {
 
 	/**
 	 *
-	 * @param id the of the element to shich the nodes are to be added
-	 * @param nodes an object of which the toSTring method returns a well
+	 * @param id the of the element to which the nodes are to be added
+	 * @param nodes an object of which the toString method returns a well
 	 * balanced xhtml snipped
 	 */
 	public void addNodes2Elem(String id, Object nodes) {
