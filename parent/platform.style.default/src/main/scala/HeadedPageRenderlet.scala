@@ -38,7 +38,7 @@ resultDocModifier.addScriptReference("/jquery/jquery-1.3.2.min.js");
 resultDocModifier.addScriptReference("/jquery/jquery.panel.js");
 resultDocModifier.addScriptReference("/style/scripts/panel.js");*/
 resultDocModifier.addScriptReference("/scripts/modification-status.js");
-resultDocModifier.addScriptReference("/scripts/login.js");
+resultDocModifier.addScriptReference("/scripts/logout.js");
 resultDocModifier.addScriptReference("/scripts/status-message.js");
 <html xmlns="http://www.w3.org/1999/xhtml">
 	<head id="head">

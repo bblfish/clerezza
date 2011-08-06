@@ -21,14 +21,14 @@
  for Internet Explorer and Firefox. Sadly missing in other browsers */
 
 function logout(elem) {
-    if (document.all == null) {
+    if (document.all == null) {// FF, Opera, etc
        if (window.crypto) {
            try{
                window.crypto.logout();
                return false; //firefox ok -- no need to follow the link
            } catch (err) {//Safari, Opera, Chrome -- try with session breaking
            }
-       } else { //also try with session breaking
+       } else { //Opera, will require server side session breaking
        }
     } else { // MSIE 6+
        document.execCommand('ClearAuthenticationCache');
@@ -37,17 +37,4 @@ function logout(elem) {
     return true
  }
 
-function login(elem) {
-    if (document.all == null){ // FF, Opera, etc
-       if (window.crypto) {
-         try{
-             res = window.crypto.logout();
-             return false; // no need to follow link
-          } catch (err) {}
-       }
-    } else {  // MSIE 6+
-          document.execCommand('ClearAuthenticationCache');
-           return false;
-    };
-    return true;
-}
+function login(elem) { return logout(elem) } //it's just the same at present
