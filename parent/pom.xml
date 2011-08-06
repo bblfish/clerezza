@@ -1282,6 +1282,11 @@
                 <artifactId>bcprov-jdk16</artifactId>
                 <version>1.46</version>
             </dependency>
+            <dependency>
+                <groupId>com.googlecode.guava-osgi</groupId>
+                <artifactId>guava-osgi</artifactId>
+                <version>9.0.0</version>
+            </dependency>
 		</dependencies>
 	</dependencyManagement>
 	<distributionManagement>
@@ -1315,6 +1320,10 @@
 			<url>http://repository.apache.org/content/groups/snapshots-group</url>
 			<layout>default</layout>
 		</repository>
+        <repository>
+          <id>oss sonatype</id>
+          <url>https://oss.sonatype.org/content/repositories/releases</url>
+        </repository>
 	</repositories>
 	<pluginRepositories>
 		<pluginRepository>

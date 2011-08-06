@@ -396,6 +396,11 @@
 			<artifactId>platform.security.foafssl.core</artifactId>
 			<scope>runtime</scope>
 		</dependency>
+        <dependency>
+            <groupId>com.googlecode.guava-osgi</groupId>
+            <artifactId>guava-osgi</artifactId>
+			<scope>runtime</scope>
+        </dependency>
 		<dependency>
 			<groupId>org.apache.clerezza</groupId>
 			<artifactId>platform.security.foafssl.test</artifactId>

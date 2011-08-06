@@ -79,7 +79,6 @@
         <dependency>
             <groupId>com.googlecode.guava-osgi</groupId>
             <artifactId>guava-osgi</artifactId>
-            <version>9.0.0</version>
         </dependency>
 	</dependencies>
     <repositories>
