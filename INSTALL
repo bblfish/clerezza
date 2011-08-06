@@ -1,0 +1,42 @@
+
+COMPILING
+=========
+
+We are using Java 7
+
+It currently requires following three Web Request Handler API projects to be built first, until the patches find their way back to their main repositories. 
+
+$ git clone git@github.com:bblfish/wymiwyg-wrhapi.git
+$ cd wymiwyg-wrhapi.git
+$ mvn clean install -Dgpg.skip=true 
+
+$ git clone git@github.com:bblfish/wymiwyg-wrhapi-osgi.git
+$ cd wymiwyg-wrhapi-osgi
+$ mvn clean install -Dgpg.skip=true 
+
+$ git clone git@github.com:bblfish/wymiwyg-wrhapi-jetty.git
+$ cd wymiwyg-wrhapi-jetty
+$ mvn clean install -Dgpg.skip=true -Dmaven.test.skip=true
+
+Once those are compiled download this git repository
+
+$ cd parent
+$ export MAVEN_OPTS='-Xmx512m -XX:-UseSplitVerifier' 
+$ mvn clean install -Dmaven.test.skip=true
+
+RUNNING
+=======
+
+You can then change into one of the platform.launcher.{tdb,sesame,mulgara} directories 
+
+$ mkdir run
+$ cd run
+$ java -XX:-UseSplitVerifier -Xmx512m -Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005 -Dorg.ops4j.pax.url.mvn.localRepository=/Volumes/Dev/hjs/.m2/repository -XX:MaxPermSize=248M -Dfile.encoding=utf-8 -jar ../target/platform.launcher.tdb-0.5-incubating-SNAPSHOT.jar --https_keystore_clientauth want  --https_port 8443 --https_keystore_path /Users/hjs/tmp/cert/KEYSTORE.jks --https_keystore_password secret
+
+The above will start a https://webid.info/ enabled clerezza on port 8443 
+
+TODO
+====
+
+explain how to make the keystore above
+
