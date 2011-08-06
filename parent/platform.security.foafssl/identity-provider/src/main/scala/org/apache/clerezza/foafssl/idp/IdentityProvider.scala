@@ -278,7 +278,7 @@ class IdentityProvider extends Logging {
 	def request(@Context uriInfo: UriInfo, @Context headers: HttpHeaders): Response = {
 		val params: scala.collection.Map[String,java.util.List[String]] = uriInfo.getQueryParameters
 
-		val relyingPartySrvcs = params.getOrElse("rs",EMPTY_LIST).
+		val relyingPartySrvcs = params.getOrElse("rs",params.getOrElse("authreqissuer", EMPTY_LIST)).
 			flatMap(v => try {Option(new URL(v))} catch {case _ => None})
 
 		val pause = params.contains("pause")
