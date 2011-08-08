@@ -70,8 +70,7 @@ class XhtmlWebIDClaimPg(arguments: XmlResult.Arguments, webIdGraphsService: WebI
   import XhtmlWebIDClaimPg._
 
 	resultDocModifier.setTitle("WebId Tests");
-	resultDocModifier.addNodes2Elem("tx-module", <h1>Test Panel</h1>);
-	resultDocModifier.addNodes2Elem("tx-module-tabs-ol", <li class="tx-active"><a href="#">WebId Tester</a></li>);
+	resultDocModifier.addNodes2Elem("head", <style type="text/css">.login {{ visibility:hidden; }}</style> )
 
   override def content = <div id="tx-content"> <h2>WebID Login Test Page</h2>
     <p>The TLS connection was established. We do not test the basic TLS connection.</p>
