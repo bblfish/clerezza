@@ -38,14 +38,15 @@ import org.apache.clerezza.rdf.core.access.TcManager
 import java.security.{PrivilegedAction, AccessController, Signature, KeyStore}
 import org.apache.clerezza.rdf.utils.UnionMGraph
 import org.apache.clerezza.platform.users.WebIdGraphsService
-import org.apache.clerezza.rdf.core.impl.SimpleMGraph
 import org.apache.clerezza.foafssl.ssl.X509TrustManagerWrapperService
 import java.net.{URL, URLEncoder}
 import java.util.Calendar
 import java.security.cert._
-import org.apache.clerezza.rdf.core.UriRef
 import org.apache.commons.codec.binary.Base64
 import collection.immutable.{WrappedString, StringOps}
+import org.apache.clerezza.rdf.core.impl.SimpleMGraph
+import org.apache.clerezza.rdf.core.{Literal, UriRef}
+import collection.mutable.WrappedArray
 
 
 object IdentityProvider {
@@ -230,7 +231,7 @@ class IdentityProvider extends Logging {
 	 *    This needed so the breaking of the session can be tied to the one shown in displaying this page, and not
 	 *    some session that may be the one used when this form is posted to the server
 	 */
-	def displayProfile(relyingPartySrvc: URL, sessions: Iterable[String]) = {
+	def displayProfile(relyingPartySrvc: URL, sessions: Iterable[String], certChange: Option[Boolean]) = {
 		val ids=userPrincipals()
 		val webids = ids.map(f=>f.getWebId)
 
@@ -246,6 +247,8 @@ class IdentityProvider extends Logging {
 		});
 
 		val cnt= new context(profiles) {
+
+
 			val profileGn: RichGraphNode = (
 				bnode.a(WEBIDPROVIDER.ProfileSelector)
 					  .a(PLATFORM.HeadedPage)
@@ -253,6 +256,7 @@ class IdentityProvider extends Logging {
 					-- WEBIDPROVIDER.relyingParty --> relyingPartySrvc
 					-- WEBIDPROVIDER.authLink --> createSignedResponse(ids, relyingPartySrvc)
 				   -- WEBIDPROVIDER.sessionId -->> sessions.map(s=>new EzLiteral(s))
+					-- WEBIDPROVIDER.certChanged -->> certChange.map(s=>s: Literal)
 				)
 		}
 		val p=cnt.profileGn
@@ -281,16 +285,19 @@ class IdentityProvider extends Logging {
 		if (Nil == relyingPartySrvcs) infoPage()
 		else  {
 			val oldSigStr = params.getOrElse("ocs",EMPTY_LIST)
-			if (oldSigStr.size() > 0) {
-				val oldSig =oldSigStr.map(sig => Base64.decodeBase64(sig)).toSet
-				val nowSig = x509Creds.map(claim => claim.cert.getSignature)
-				if (!oldSig.containsAll(nowSig)) { //really these only containers contain only one or none
+			val change = if (oldSigStr.size() > 0) {
+				val oldSig =oldSigStr.map(sig => Base64.decodeBase64(sig):WrappedArray[Byte]).toSet
+				val nowSig = x509Creds.map(claim => claim.cert.getSignature: WrappedArray[Byte])
+				if (!oldSig.containsAll(nowSig)) { //really these containers contain only one or none
 					//then the certificate has been changed, and one can remove the blocking of the old cert from the DB
 					//this is in order to avoid having the certificate block changes later
-					tlsTM.clearBreak(oldSig.head)
+					tlsTM.clearBreak(oldSig.head.array)
+					Option(true)
+				} else {
+					Option(false)
 				}
-			}
-			displayProfile(relyingPartySrvcs.head,headers.getRequestHeader("ssl_session_id"))
+			} else None //there was no request to change
+			displayProfile(relyingPartySrvcs.head,headers.getRequestHeader("ssl_session_id"),change)
 		}
 	}
 

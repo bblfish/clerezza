@@ -125,19 +125,25 @@ class XhtmlProfilePg(arguments: XmlResult.Arguments) extends XmlResult(arguments
    lazy val x509claims = subject.getPublicCredentials(classOf[X509Claim])
 	lazy val sentCertWithNoVerifiableWebID :Boolean =
 		 x509claims.size > 0 && subject.getPrincipals.filter(p=>p.isInstanceOf[WebIdPrincipal]).size ==0
+	lazy val certChanged = (res/WEBIDPROVIDER.certChanged).map(gn => "true".equalsIgnoreCase(gn*) )
 
 
-   def hasWebID: Elem = {
-	   <div>
-		   <table>{for (id <- agents) yield <tr><td>{getAgentPix(id)}</td></tr>}
-		   </table>
-		   <table>
-			   <tr><td><a href={loginUrl*}>login to {hostcgi.getHost}</a></td></tr>
-		   </table>
-		   <p>Or would you rather use a different Identity?</p>
-		   {changeCertForm("Change Identity")}
-	   </div>
-   }
+	def certChangeFailed= <div><p> <font color="red">Your certificate change seems to have failed.</font>. Perhaps
+	you only have one certificate in your browser or you chose the same one. If not it could be that you are using a browser
+	that has trouble changing certificates (Opera, Safari, Chrome are known). Try again. Sometimes it works after a few tries.
+	Otherwise please send them a bug report.</p>
+	</div>
+
+   def hasWebID: Elem = <div>
+		<table>
+			 <tr><td><a href={loginUrl*}>login to {hostcgi.getHost}</a></td></tr>
+			 {for (id <- agents) yield <tr><td>{getAgentPix(id)}</td></tr>}
+		</table>
+
+		<p>Or would you rather use a different Identity?</p>
+		{changeCertForm("Change Identity")}
+	</div>
+
 
 	def hasCertButNoWebID: Elem = {
 		val webids = x509claims.flatMap(xclaim=>xclaim.webidclaims)
@@ -171,6 +177,9 @@ class XhtmlProfilePg(arguments: XmlResult.Arguments) extends XmlResult(arguments
 
 	override def content =  <div id="tx-content">
 		<p>Welcome {getName(agents)}</p>
+		{certChanged.headOption match {
+			case Some(false) => certChangeFailed
+			case _ => emptyText} }
 	   { if (agents.size > 0) hasWebID
 		  else if (sentCertWithNoVerifiableWebID) hasCertButNoWebID
 		  else hasNoCert

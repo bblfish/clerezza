@@ -49,5 +49,11 @@
                of rdfs:comment. This is useful for breaking web browser sessions. Robots can change those very
                easily  """;
     rdfs:domain foaf:Document;
-    rdfs:range xsd:String .
+    rdfs:range xsd:string .
+
+:certChanged a rdf:Property;
+    rdfs:subPropertyOf rdfs:comment;
+    rdfs:comment "did an attempt to change the cert, resulting in this page, succeed?";
+    rdfs:domain foaf:Document;
+    rdfs:range xsd:boolean .
 
