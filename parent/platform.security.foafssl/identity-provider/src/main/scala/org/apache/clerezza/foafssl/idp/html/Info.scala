@@ -69,7 +69,6 @@ class XhtmlInfoPg(arguments: XmlResult.Arguments) extends XmlResult(arguments ) 
 		   with a signed response containing his WebID. To create such a link enter the URL of your login service here:</p>
       <p><form action='' method='get'>Requesting auth service URL:
 	      <input type='text' size='80' name='rs'/>
-	      <input type='hidden' name='pause' value="true"/>
 	      <input type='submit' value='Log into this service provider'/>
          </form>
 	   </p>

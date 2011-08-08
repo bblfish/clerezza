@@ -38,16 +38,14 @@ import org.apache.clerezza.rdf.core.access.TcManager
 import java.security.{PrivilegedAction, AccessController, Signature, KeyStore}
 import org.apache.clerezza.rdf.utils.UnionMGraph
 import org.apache.clerezza.platform.users.WebIdGraphsService
-import org.apache.clerezza.rdf.core.impl.{SimpleMGraph, TripleImpl, SimpleGraph}
+import org.apache.clerezza.rdf.core.impl.SimpleMGraph
 import org.apache.clerezza.foafssl.ssl.X509TrustManagerWrapperService
-import java.net.{URI, URL, URLEncoder}
-import java.math.BigInteger
+import java.net.{URL, URLEncoder}
 import java.util.Calendar
 import java.security.cert._
-import org.apache.clerezza.rdf.core.{Literal, UriRef, Graph}
+import org.apache.clerezza.rdf.core.UriRef
 import org.apache.commons.codec.binary.Base64
-import collection.immutable.{Set, WrappedString, StringOps}
-import javax.security.auth.Subject
+import collection.immutable.{WrappedString, StringOps}
 
 
 object IdentityProvider {
@@ -174,15 +172,14 @@ class IdentityProvider extends Logging {
 	           @FormParam("certsig") reqCertSig: String,
 		        @FormParam("session") reqSession: String,
 		        @FormParam("authreqissuer") authreqissuer: String, //
-	           @FormParam("rs") rs: String, //same as authrequissuer
-		        @FormParam("pause") pause: String): Response = {
+	           @FormParam("rs") rs: String //same as authrequissuer
+		       ): Response = {
 
 		val relyingService = if (null != rs && "" != rs ) rs else authreqissuer
 
 		def responseUrl: scala.StringBuilder = {
 			val urlbuilder = new StringBuilder(300, "/srvc/webidp?") //the signature takes a lot of space
 			if (relyingService != null) urlbuilder append "rs=" append URLEncoder.encode(relyingService,"UTF-8") append "&"
-			if (pause != null) urlbuilder append "pause=true&"
 			urlbuilder
 		}
 
@@ -281,10 +278,8 @@ class IdentityProvider extends Logging {
 		val relyingPartySrvcs = params.getOrElse("rs",params.getOrElse("authreqissuer", EMPTY_LIST)).
 			flatMap(v => try {Option(new URL(v))} catch {case _ => None})
 
-		val pause = params.contains("pause")
-
 		if (Nil == relyingPartySrvcs) infoPage()
-		else if (pause) {
+		else  {
 			val oldSigStr = params.getOrElse("ocs",EMPTY_LIST)
 			if (oldSigStr.size() > 0) {
 				val oldSig =oldSigStr.map(sig => Base64.decodeBase64(sig)).toSet
@@ -297,7 +292,6 @@ class IdentityProvider extends Logging {
 			}
 			displayProfile(relyingPartySrvcs.head,headers.getRequestHeader("ssl_session_id"))
 		}
-		else authenticate(relyingPartySrvcs.head)
 	}
 
 
@@ -337,6 +331,7 @@ class IdentityProvider extends Logging {
 
 	/**
 	 * redirect to the requestor with identity information and sign it
+	 * Now that we do logout, the direct method would need to be developed more carefully
 	 */
 	private def authenticate(relyingPartySrvc: URL): Response = {
 		val ids = userPrincipals()
@@ -346,7 +341,7 @@ class IdentityProvider extends Logging {
 			else {
 				val claim: X509Claim = creds.next
 				if (claim.webidclaims.size == 0) "?error=noWebId"
-				else "?error=noVerfiedWebId"
+				else "?error=noVerifiedWebId"
 				//todo missing: how to send errors that occur along the line. ie we are missing "?IdPError=..."
 			}
 			new URL(relyingPartySrvc,uriStr)

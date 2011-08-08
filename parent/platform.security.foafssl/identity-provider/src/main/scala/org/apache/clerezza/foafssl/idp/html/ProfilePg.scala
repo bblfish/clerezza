@@ -150,7 +150,7 @@ class XhtmlProfilePg(arguments: XmlResult.Arguments) extends XmlResult(arguments
 			{changeCertForm("Switch certificate")}
 			<p>Or else return to your service provider</p>
 			<form method="GET" action={loginUrl *}>
-				<input type="hidden" name="error" value="noVerifiedWebId"/>
+				<input type="hidden" name="error" value={if (webids.size>0) "noVerifiedWebID" else "noWebId"}/>
 				<input type="submit" value="return"/>
 			</form>
 		</div>
@@ -183,7 +183,6 @@ class XhtmlProfilePg(arguments: XmlResult.Arguments) extends XmlResult(arguments
 		<form id="logout" method="POST" action="/srvc/webidp/logout" onsubmit="logout()">
 			<input type="hidden" name="session" value={res/WEBIDPROVIDER.sessionId*}/>
 		   <input type="hidden" name="rs" value={hostcgi.toString}/>
-		   <input type="hidden" name="pause" value="true"/>
 		   <input type="submit" value={buttonTxt}/>
 	   </form>
 		}
