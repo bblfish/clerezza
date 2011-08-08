@@ -175,7 +175,7 @@ class XhtmlProfilePg(arguments: XmlResult.Arguments) extends XmlResult(arguments
 		  else if (sentCertWithNoVerifiableWebID) hasCertButNoWebID
 		  else hasNoCert
 	   }
-		<p>The certificate your browser <a href="/test/WebId/x509">sent in more detail</a>.</p>
+		<p>View the certificate your browser <a href="/test/WebId/x509">sent in more detail</a>.</p>
 		</div>
 
 
