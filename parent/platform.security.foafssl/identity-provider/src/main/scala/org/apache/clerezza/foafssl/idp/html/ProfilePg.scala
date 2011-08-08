@@ -113,8 +113,6 @@ class XhtmlProfilePg(arguments: XmlResult.Arguments) extends XmlResult(arguments
 	resultDocModifier.addNodes2Elem("tx-module-tabs-ol", <li><a href="/srvc/webidp">Info</a></li>);
 	resultDocModifier.addNodes2Elem("tx-module-tabs-ol", <li class="tx-active"><a href="#">Profile</a></li>)
 	resultDocModifier.addNodes2Elem("tx-module-tabs-ol", <li class="tx-active"><a href="/test/WebId">Test</a></li>)
-	resultDocModifier.addNodes2Elem("tx-module-tabs-ol", <li><a href="/srvc/webidp/about">About</a></li>);
-	resultDocModifier.addNodes2Elem("tx-module-tabs-ol", <li><a href="legal">Legal</a></li>)
 	resultDocModifier.addNodes2Elem("head", <style type="text/css">.login {{ visibility:hidden; }}</style> )
 
 	lazy val agents  = res / FOAF.primaryTopic

@@ -324,6 +324,7 @@ class IdentityProvider extends Logging {
 		Response.ok(keyPair.serviceGraph).build()
 	}
 
+
 	def userPrincipals(): scala.collection.mutable.Set[WebIdPrincipal] = {
 		val subject = UserUtil.getCurrentSubject();
 		val principals = subject.getPrincipals collect {

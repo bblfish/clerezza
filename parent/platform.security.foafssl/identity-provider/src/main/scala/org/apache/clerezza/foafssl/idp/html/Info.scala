@@ -47,8 +47,6 @@ class XhtmlInfoPg(arguments: XmlResult.Arguments) extends XmlResult(arguments ) 
 	resultDocModifier.addNodes2Elem("tx-module-tabs-ol", <li class="tx-active"><a href="#">Info</a></li>);
 	resultDocModifier.addNodes2Elem("tx-module-tabs-ol", <li><a href={"/srvc/webidp?rs="+URLEncoder.encode("http://foaf.me/index.php","UTF-8")+"&pause=on"}>Profile</a></li>)
 	resultDocModifier.addNodes2Elem("tx-module-tabs-ol", <li><a href="/test/WebId">Test</a></li>);
-	resultDocModifier.addNodes2Elem("tx-module-tabs-ol", <li><a href="/srvc/webidp/about">About</a></li>);
-	resultDocModifier.addNodes2Elem("tx-module-tabs-ol", <li><a href="legal">Legal</a></li>);
 	resultDocModifier.addNodes2Elem("head", <style type="text/css">.login {{ visibility:hidden; }}</style> )
 
 
