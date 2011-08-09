@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <artifactId>parent</artifactId>
+        <groupId>org.apache.clerezza</groupId>
+        <version>0.2-incubating-SNAPSHOT</version>
+    </parent>
+	<groupId>org.apache.clerezza.ext</groupId>
+    <artifactId>org.scala-lang.jline</artifactId>
+    <version>0.4-incubating-SNAPSHOT</version>
+    <packaging>bundle</packaging>
+    <name>Clerezza Ext - Scala Lang JLine</name>
+    <description>Scala Lang JLine as s OSGi bundle</description>
+    
+    <dependencies>
+	<dependency>
+    		<groupId>org.scala-lang</groupId>
+    		<artifactId>jline</artifactId>
+    		<version>2.9.0-1</version>
+	</dependency> 
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-bundle-plugin</artifactId>
+                <extensions>true</extensions>
+                <configuration>
+                    <instructions>
+                        <Export-Package>scala.tools.jline.*, org.fusesource.* </Export-Package>
+                        <Import-Package></Import-Package>
+                    </instructions>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
