@@ -66,7 +66,7 @@ object IdentityProvider {
  * @author Henry Story, Bruno Harbulot
  */
 
-@Path("/srvc/webidp")
+@Path("/srv/idp")
 class IdentityProvider extends Logging {
 
 	import org.apache.clerezza.foafssl.ssl.Activator._
@@ -179,7 +179,7 @@ class IdentityProvider extends Logging {
 		val relyingService = if (null != rs && "" != rs ) rs else authreqissuer
 
 		def responseUrl: scala.StringBuilder = {
-			val urlbuilder = new StringBuilder(300, "/srvc/webidp?") //the signature takes a lot of space
+			val urlbuilder = new StringBuilder(300, "/srv/idp?") //the signature takes a lot of space
 			if (relyingService != null) urlbuilder append "rs=" append URLEncoder.encode(relyingService,"UTF-8") append "&"
 			urlbuilder
 		}

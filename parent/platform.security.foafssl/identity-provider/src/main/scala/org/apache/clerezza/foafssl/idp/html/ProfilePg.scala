@@ -110,7 +110,7 @@ class XhtmlProfilePg(arguments: XmlResult.Arguments) extends XmlResult(arguments
 
 	resultDocModifier.setTitle("WebId Profile Selector")
 	resultDocModifier.addNodes2Elem("tx-module", <h1>WebId Service</h1>)
-	resultDocModifier.addNodes2Elem("tx-module-tabs-ol", <li><a href="/srvc/webidp">Info</a></li>);
+	resultDocModifier.addNodes2Elem("tx-module-tabs-ol", <li><a href="/srv/idp">Info</a></li>);
 	resultDocModifier.addNodes2Elem("tx-module-tabs-ol", <li class="tx-active"><a href="#">Profile</a></li>)
 	resultDocModifier.addNodes2Elem("tx-module-tabs-ol", <li class="tx-active"><a href="/test/WebId">Test</a></li>)
 	resultDocModifier.addNodes2Elem("head", <style type="text/css">.login {{ visibility:hidden; }}</style> )
@@ -189,7 +189,7 @@ class XhtmlProfilePg(arguments: XmlResult.Arguments) extends XmlResult(arguments
 
 
 	def changeCertForm(buttonTxt: String) = {
-		<form id="logout" method="POST" action="/srvc/webidp/logout" onsubmit="logout()">
+		<form id="logout" method="POST" action="/srv/idp/logout" onsubmit="logout()">
 			<input type="hidden" name="session" value={res/WEBIDPROVIDER.sessionId*}/>
 		   <input type="hidden" name="rs" value={hostcgi.toString}/>
 		   <input type="submit" value={buttonTxt}/>
