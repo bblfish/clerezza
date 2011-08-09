@@ -6,20 +6,21 @@ We are using Java 7
 
 It currently requires following three Web Request Handler API projects to be built first, until the patches find their way back to their main repositories. 
 
-$ git clone git@github.com:bblfish/wymiwyg-wrhapi.git
+$ git clone https://github.com/bblfish/wymiwyg-wrhapi.git
 $ cd wymiwyg-wrhapi.git
 $ mvn clean install -Dgpg.skip=true 
 
-$ git clone git@github.com:bblfish/wymiwyg-wrhapi-osgi.git
+$ git clone https://github.com/bblfish/wymiwyg-wrhapi-jetty.git
 $ cd wymiwyg-wrhapi-osgi
-$ mvn clean install -Dgpg.skip=true 
+$ mvn clean install -Dgpg.skip=true -Dmaven.test.skip=true
 
-$ git clone git@github.com:bblfish/wymiwyg-wrhapi-jetty.git
+$ git clone https://github.com/bblfish/wymiwyg-wrhapi-osgi.git
 $ cd wymiwyg-wrhapi-jetty
 $ mvn clean install -Dgpg.skip=true -Dmaven.test.skip=true
 
 Once those are compiled download this git repository
 
+$ git clone https://github.com/bblfish/clerezza.git
 $ cd parent
 $ export MAVEN_OPTS='-Xmx512m -XX:-UseSplitVerifier' 
 $ mvn clean install -Dmaven.test.skip=true
