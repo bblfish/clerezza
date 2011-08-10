@@ -136,7 +136,7 @@ class XhtmlProfilePg(arguments: XmlResult.Arguments) extends XmlResult(arguments
 
    def hasWebID: Elem = <div>
 		<table>
-			 <tr><td><a href={loginUrl*}>login to {hostcgi.getHost}</a></td></tr>
+			 <tr><td><a href={loginUrl*}><button>login to {hostcgi.getHost}</button></a></td></tr>
 			 {for (id <- agents) yield <tr><td>{getAgentPix(id)}</td></tr>}
 		</table>
 
