@@ -374,12 +374,12 @@ class IdentityProvider extends Logging {
 	 * @throws SignatureException
 	 */
 	private def createSignedResponse(verifiedWebIDs: scala.collection.Set[WebIdPrincipal], replyTo: URL): URL = {
-		var uri = "?"+ verifiedWebIDs.slice(0,3).foldRight("") {
+		var uri = replyTo.toExternalForm+"?"+ verifiedWebIDs.slice(0,3).foldRight("") {
 			(wid,str) => "webid="+  URLEncoder.encode(wid.getWebId.getUnicodeString, "UTF-8")+"&"
 		}
 		uri = uri + "ts=" + URLEncoder.encode(dateFormat.format(Calendar.getInstance.getTime), "UTF-8")
 		val signedUri =	uri +"&sig=" + URLEncoder.encode(new String(Base64.encodeBase64URLSafeString(keyPair.sign(uri))), "UTF-8")
-		return new URL(replyTo,signedUri)
+		return new URL(signedUri)
 	}
 
 	private val dateFormat: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
