@@ -119,7 +119,7 @@ class XhtmlProfilePg(arguments: XmlResult.Arguments) extends XmlResult(arguments
 	lazy val loginUrl = res/WEBIDPROVIDER.authLink
 	lazy val hostcgi = {
 		val url = new URL(loginUrl*)
-		new URL(url.getProtocol,url.getHost,url.getPort,url.getPath)
+		new URL(url.getProtocol,url.getHost,url.getPort,url.getFile)
 	}
 	lazy val subject = UserUtil.getCurrentSubject();
    lazy val x509claims = subject.getPublicCredentials(classOf[X509Claim])
