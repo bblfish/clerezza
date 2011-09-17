@@ -40,6 +40,7 @@ import javax.security.auth.Subject
 import collection.JavaConversions._
 import org.apache.clerezza.platform.users.WebIdGraphsService
 import org.apache.clerezza.rdf.scala.utils._
+import java.security.{PrivilegedAction, AccessController}
 
 /**
  * implementation of (very early) version of test server for WebID so that the following tests
@@ -58,7 +59,6 @@ object WebIDTester {
 
 @Path("/test/WebId")
 class WebIDTester {
-  import WebIDTester._
 
 
   protected def activate(componentContext: ComponentContext) = {
@@ -66,30 +66,41 @@ class WebIDTester {
   }
 
 
-
-	/**
-	 * don't bother converting to rdf here for the moment.
+   /**
+	 * return a graph describing the tests that succeeded or failed for this resource
 	 */
-  @GET
-  @Produces(Array("application/xhtml","text/html"))
-  def getTestMe(): GraphNode = {
-    val resultNode: GraphNode = new GraphNode(new BNode(),new SimpleMGraph())
-    resultNode.addProperty(RDF.`type`, testCls)
-	 resultNode.addProperty(RDF.`type`,PLATFORM.HeadedPage)
-    return resultNode
-  }
+   @GET
+   @Produces(Array("application/rdf+xml","text/turtle","text/n3"))
+   def getTestAuthentication(): TripleCollection = {
+	   val subject = UserUtil.getCurrentSubject()
+	   return AccessController.doPrivileged(new PrivilegedAction[TripleCollection] {
+			def run: TripleCollection = {
+				val certTester = new CertTests(subject, webIdGraphsService)
+				certTester.describeTests()
+				return certTester.toRdf()
+			}
+	   })
+   }
+
+	@GET
+	@Produces(Array("application/xhtml+xml","text/html"))
+	def getTestAuthHtml(): GraphNode = {
+		import WebIDTester._
+		new context {
+			val doc = (
+			bnode.a(FOAF.Document)
+				  .a(testCls)
+				  .a(PLATFORM.HeadedPage)
+			)
+		}.doc
+	}
+
 
 	@GET
 	@Produces(Array("text/n3","text/rdf+n3","text/turtle"))
 	@Path("n3")
-	def getTestMe_N3(): TripleCollection = getTestMeRDF()
+	def getTestMe_N3() = getTestAuthentication()
 
-	@GET
-	def getTestMeRDF(): TripleCollection = {
-		val certTester = new CertTests(UserUtil.getCurrentSubject(), webIdGraphsService)
-		certTester.describeTests()
-		return certTester.toRdf()
-	}
 
 	@GET
 	@Path("x509")
@@ -118,6 +129,7 @@ class WebIDTester {
 
 /** All the cert tests are placed here */
 class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends Assertions {
+	import WebIDTester._
 
 	import EARL.{passed, failed, cantTell, untested}
 
@@ -128,9 +140,12 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 	def describeTests() {
 
 		val thisDoc = (
-			bnode.a(FOAF.Document) //there really has to be a way to get THIS doc url, to add relative urls to the graph
+			bnode.a(FOAF.Document)
+				  .a(testCls)
+				  .a(PLATFORM.HeadedPage)
               -- DCTERMS.created --> now
 			)
+
 		//
 		// Description of certificates and their public profileKeys
 		//
@@ -600,7 +615,7 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 			sout.serialize(out, graph, "text/rdf+n3")
 			val n3String = out.toString("UTF-8")
 			//todo: turtle mime type literal?
-			val keylit: GraphNode = bnode --  OWL.sameAs --> (n3String^^"http://example.com/turtle".uri)
+			val keylit: GraphNode = bnode --  OWL.sameAs --> (n3String^^"http://purl.org/NET/mediatypes/text/turtle".uri)
 
 
 			//
