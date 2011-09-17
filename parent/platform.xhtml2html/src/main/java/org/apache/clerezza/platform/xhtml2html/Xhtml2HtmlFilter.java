@@ -37,7 +37,7 @@ import org.wymiwyg.wrhapi.util.EnhancedRequest;
 
 /**
  * This Filter acts on client agents matching a pattern defined by the 
- * service property <code>pattern</code>, it changes the returhned content type 
+ * service property <code>pattern</code>, it changes the returned content type
  * from application/xhtml+xml to application/html and adds application/xhtml+xml
  * to the accept header.
  *
@@ -55,9 +55,9 @@ import org.wymiwyg.wrhapi.util.EnhancedRequest;
 public class Xhtml2HtmlFilter implements Filter {
 
 	private Pattern[] patterns;
-	final MimeType xhtmlMimeType;
-	final MimeType htmlMimeType;
-	{
+	static final MimeType xhtmlMimeType;
+	static final MimeType htmlMimeType;
+	static {
 		try {
 			xhtmlMimeType = new MimeType("application", "xhtml+xml");
 			htmlMimeType = new MimeType("text", "html");

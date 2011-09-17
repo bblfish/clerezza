@@ -23,10 +23,14 @@ import java.util.List;
 import org.wymiwyg.wrhapi.HandlerException;
 import org.wymiwyg.wrhapi.HeaderName;
 import org.wymiwyg.wrhapi.Request;
+import org.wymiwyg.wrhapi.util.AcceptHeaderEntry;
+import org.wymiwyg.wrhapi.util.InvalidPatternException;
 import org.wymiwyg.wrhapi.util.RequestWrapper;
 
 /**
- * Sets the accept-header to text/html, application/xhtml+xml;q=.9,*\/*;q=.1
+ * Adds an text/html Accept header value if the header contained an xhtml value,
+ * and vice-versa, adds an xhtml Accept header if the header contained an html one.
+ * The q values of the new headers are those of the old one.
  *
  * @author rbn
  */
@@ -38,14 +42,25 @@ class WrappedRequest extends RequestWrapper {
 
 	@Override
 	public String[] getHeaderValues(HeaderName headerName) throws HandlerException {
+		final String[] headerValues = super.getHeaderValues(headerName);
 		if (headerName.equals(HeaderName.ACCEPT)) {
 			List<String> newList = new ArrayList();
-			newList.add("text/html");
-			newList.add("application/xhtml+xml;q=.9");
-			newList.add("*/*;q=.1");
+			AcceptHeaderEntry htmlHdr=null, xhtmlHdr=null;
+			for(int i=0; i<headerValues.length;i++) {
+				try {
+					final AcceptHeaderEntry entry = new AcceptHeaderEntry(headerValues[i]);
+					if ( entry.getRange().match(Xhtml2HtmlFilter.htmlMimeType)) htmlHdr = entry;
+					else if ( entry.getRange().match(Xhtml2HtmlFilter.xhtmlMimeType)) xhtmlHdr = entry;
+					else newList.add(entry.toString());
+				} catch (InvalidPatternException e) {
+				}
+			}
+			if ( htmlHdr!=null && xhtmlHdr==null ) {
+				newList.add( "application/xhtml+xml;q="+htmlHdr.getQ());
+			}
 			return newList.toArray(new String[newList.size()]);
 		} else {
-			return super.getHeaderValues(headerName);
+			return headerValues;
 		}
 	}
 
