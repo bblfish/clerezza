@@ -1,0 +1,4 @@
+Git version of the Web Request Handler API (WRHAPI) . OSGI wrapper
+version of that.
+originally on http://svn.berlios.de/svnroot/repos/wrhapi/wrhapi-jetty/
+Used by Apache Clerezza

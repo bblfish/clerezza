@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<parent>
+		<artifactId>wymiwyg</artifactId>
+		<groupId>org.wymiwyg</groupId>
+		<version>0.9.4</version>
+	</parent>
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>org.wymiwyg</groupId>
+	<artifactId>wrhapi-osgi-parent</artifactId>
+	<version>0.4.3-SNAPSHOT</version>
+	<packaging>pom</packaging>
+	<name>WRHAPI OSGi Parent</name>
+	<description>WRHAPI implementation on OSGi http service, parent project</description>
+	<url>http://wrhapi.wymiwyg.org/</url>
+	<profiles>
+		<profile>
+			<id>release</id>
+			<activation>
+				<activeByDefault>true</activeByDefault>
+			</activation>
+			<modules>
+				<module>core</module>
+			</modules>
+		</profile>
+		<profile>
+			<id>test</id>
+			<activation>
+				<activeByDefault>true</activeByDefault>
+			</activation>
+			<modules>
+				<module>tests</module>
+			</modules>
+		</profile>
+	</profiles>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<source>1.5</source>
+					<target>1.5</target>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-source-plugin</artifactId>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.felix</groupId>
+				<artifactId>maven-bundle-plugin</artifactId>
+<!-- 				<version>1.2.1</version> -->
+				<extensions>true</extensions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.felix</groupId>
+				<artifactId>maven-scr-plugin</artifactId>
+				<version>1.4.4</version>
+				<executions>
+					<execution>
+						<id>generate-scr-scrdescriptor</id>
+						<goals>
+							<goal>scr</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+	<scm>
+		<developerConnection>scm:svn:https://svn.berlios.de/svnroot/repos/wrhapi/wrhapi-osgi/trunk</developerConnection>
+		<connection>scm:svn:http://svn.berlios.de/svnroot/repos/wrhapi/wrhapi-osgi/trunk</connection>
+		<url>http://svn.berlios.de/viewvc/wrhapi/wrhapi-osgi/trunk/</url>
+	</scm>
+	<licenses>
+		<license>
+			<name>The Apache Software License, Version 2.0</name>
+			<url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+			<distribution>repo</distribution>
+		</license>
+	</licenses>
+</project>
+

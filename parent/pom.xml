@@ -133,6 +133,7 @@
 				<module>web.resources.yui</module>
 				<module>rdf.storage.externalizer</module>
 				<module>rdf.storage.web</module>
+				<module>wymiwyg</module>
 			</modules>
 		</profile>
 		<profile>
