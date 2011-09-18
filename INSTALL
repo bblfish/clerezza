@@ -6,7 +6,7 @@ We are using Java 7
 
 $ git clone https://github.com/bblfish/clerezza.git
 $ cd parent
-$ export MAVEN_OPTS='-Xmx512m -XX:-UseSplitVerifier' 
+$ export MAVEN_OPTS='-XX:MaxPermSize=248M -Xmx512m -XX:-UseSplitVerifier' 
 $ mvn clean install -Dmaven.test.skip=true -Dgpg.skip=true
 
 RUNNING in HTTPS mode
