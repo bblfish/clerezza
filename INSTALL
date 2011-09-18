@@ -4,40 +4,29 @@ COMPILING
 
 We are using Java 7
 
-It currently requires following three Web Request Handler API projects to be built first, until the patches find their way back to their main repositories. 
-
-$ git clone https://github.com/bblfish/wymiwyg-wrhapi.git
-$ cd wymiwyg-wrhapi.git
-$ mvn clean install -Dgpg.skip=true 
-
-$ git clone https://github.com/bblfish/wymiwyg-wrhapi-jetty.git
-$ cd wymiwyg-wrhapi-osgi
-$ mvn clean install -Dgpg.skip=true -Dmaven.test.skip=true
-
-$ git clone https://github.com/bblfish/wymiwyg-wrhapi-osgi.git
-$ cd wymiwyg-wrhapi-jetty
-$ mvn clean install -Dgpg.skip=true -Dmaven.test.skip=true
-
-Once those are compiled download this git repository
-
 $ git clone https://github.com/bblfish/clerezza.git
 $ cd parent
 $ export MAVEN_OPTS='-Xmx512m -XX:-UseSplitVerifier' 
-$ mvn clean install -Dmaven.test.skip=true
+$ mvn clean install -Dmaven.test.skip=true -Dgpg.skip=true
 
-RUNNING
-=======
+RUNNING in HTTPS mode
+=====================
 
-You can then change into one of the platform.launcher.{tdb,sesame,mulgara} directories 
+You can then change into one of the platform.launcher.{tdb,sesame,mulgara} directories. The following is valid for Jena's TDB database. 
 
 $ mkdir run
 $ cd run
-$ java -XX:-UseSplitVerifier -Xmx512m -Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005 -Dorg.ops4j.pax.url.mvn.localRepository=/Volumes/Dev/hjs/.m2/repository -XX:MaxPermSize=248M -Dfile.encoding=utf-8 -jar ../target/platform.launcher.tdb-0.5-incubating-SNAPSHOT.jar --https_keystore_clientauth want  --https_port 8443 --https_keystore_path /Users/hjs/tmp/cert/KEYSTORE.jks --https_keystore_password secret
+$ java -XX:-UseSplitVerifier -Xmx512m -XX:MaxPermSize=248M -Dfile.encoding=utf-8 -jar ../target/platform.launcher.tdb-0.5-incubating-SNAPSHOT.jar --https_keystore_clientauth want  --https_port 8443 --https_keystore_path /Users/hjs/tmp/cert/KEYSTORE.jks --https_keystore_password secret
 
-The above will start a https://webid.info/ enabled clerezza on port 8443 
+To run in debug mode add the following two parameters
+
+  -Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005
+
+The above will start a https://webid.info/ enabled clerezza on port 8443  
+
+  You need to have created yourself a keystore. If you want the keystore to function with the major browsers without error messages it needs to have been signed by a certification authority.
 
 TODO
 ====
 
-explain how to make the keystore above
-
+You can get free CA certificates for your server from https://www.startssl.com/
