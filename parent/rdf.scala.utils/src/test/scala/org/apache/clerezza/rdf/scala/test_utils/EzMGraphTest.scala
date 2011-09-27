@@ -17,7 +17,7 @@
  * under the License.
  */
 // the package starts with test, in order to simulate non package level access
-package test.org.apache.clerezza.rdf.scala.utils
+package test.org.apache.clerezza.rdf.scala.test_utils
 
 import org.apache.clerezza.rdf.core._
 import impl._
@@ -93,7 +93,9 @@ class EzMGraphTest {
 
 	@Test
 	def singleTriple {
-		import org.apache.clerezza.rdf.scala.utils.Preamble._
+		import org.apache.clerezza.rdf.scala.utils._
+
+
 
 		val expected = {
 			val s = new SimpleMGraph
@@ -108,7 +110,7 @@ class EzMGraphTest {
 
 	@Test
 	def inverseTriple {
-		import org.apache.clerezza.rdf.scala.utils.Preamble._
+		import org.apache.clerezza.rdf.scala.utils._
 		val expected = {
 			val s = new SimpleMGraph
 			s.add(new TripleImpl(retoUri.uri, FOAF.knows, henryUri.uri))
@@ -122,7 +124,7 @@ class EzMGraphTest {
 
 	@Test
 	def twographs {
-		import org.apache.clerezza.rdf.scala.utils.Preamble._
+		import org.apache.clerezza.rdf.scala.utils._
 
 		val ez1 = new context {
 			b_("reto") -- FOAF.name --> "Reto Bachman-Gmür".lang("rm")
@@ -198,7 +200,7 @@ class EzMGraphTest {
 
 	@Test
 	def usingAsciiArrows {
-		import org.apache.clerezza.rdf.scala.utils.Preamble._
+		import org.apache.clerezza.rdf.scala.utils._
 
 		val ez = new context {(
 			b_("reto").a(FOAF.Person) -- FOAF.name --> "Reto Bachman-Gmür".lang("rm")

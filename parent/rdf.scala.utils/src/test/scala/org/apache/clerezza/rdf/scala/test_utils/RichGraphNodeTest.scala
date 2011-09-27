@@ -16,14 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.clerezza.rdf.scala.utils
+package org.apache.clerezza.rdf.scala.test_utils
 
 import org.apache.clerezza.rdf.utils._
 import org.apache.clerezza.rdf.core._
+import org.apache.clerezza.rdf.scala.utils._
 import org.apache.clerezza.rdf.core.impl._
 import org.apache.clerezza.rdf.ontologies._
 import org.junit._
-import Preamble._
 
 class RichGraphNodeTest {
 
