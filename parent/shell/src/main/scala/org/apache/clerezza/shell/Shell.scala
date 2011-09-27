@@ -37,8 +37,8 @@ import javax.script.ScriptContext
 import javax.script.{ScriptEngineFactory => JavaxEngineFactory, Compilable,
 					 CompiledScript, ScriptEngine, AbstractScriptEngine, Bindings,
 					 SimpleBindings, ScriptException}
-import jline.CandidateListCompletionHandler
-import jline.{CompletionHandler, Completor, Terminal, ConsoleReader, ArgumentCompletor}
+//import jline.CandidateListCompletionHandler
+//import jline.{CompletionHandler, Completor, Terminal, ConsoleReader, ArgumentCompletor}
 
 //History => JHistory
 import java.util.{ArrayList, Arrays}
@@ -85,6 +85,9 @@ class Shell(factory: InterpreterFactory, val inStream: InputStream,
 				}
 			}
 		}
+
+		// if true this blocks in ILoopInit.awaitInitialized() - at least on OSX
+		override  def isAsync = false
 
 		override val prompt = "zz>"
 
@@ -242,10 +245,6 @@ class Shell(factory: InterpreterFactory, val inStream: InputStream,
          echo(welcomeMsg)
 		}
 
-		private def echo(msg: String) = {
-		  out println msg
-		  out.flush()
-		}
 
 	}
 	val console: Actor = new DaemonActor {
