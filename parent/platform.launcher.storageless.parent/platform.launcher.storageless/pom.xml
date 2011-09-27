@@ -240,14 +240,16 @@
 			<artifactId>org.osgi.compendium</artifactId>
 			<scope>provided</scope>
 		</dependency>
-		<!--dependency>
-                     this is a big security hole, as the console can be reached with password admin/admin
-                     by default at the url /system/console/bundles
+		<dependency>
+         <!--  this is a big security hole, as the console can be reached with password admin/admin
+               by default at the url /system/console/bundles
+               But it is useful when the console is not working
+           -->
 			<groupId>org.apache.felix</groupId>
 			<artifactId>org.apache.felix.webconsole</artifactId>
 			<scope>provided</scope>
 			<version>3.1.8</version>
-		</dependency-->
+		</dependency>
 		<!-- <dependency>
 			<groupId>org.ops4j.pax.web</groupId>
 			<artifactId>pax-web-jetty-bundle</artifactId>

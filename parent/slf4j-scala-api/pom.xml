@@ -18,12 +18,12 @@
 
   <url>http://www.slf4j.org</url>
   <description>The slf4j Scala API. Taken from
-  https://github.com/ceki/slf4j/tree/master/slf4j-scala-api. Changed to slf4j 1.6.1 and scala to 2.9.0-1.
+  https://github.com/ceki/slf4j/tree/master/slf4j-scala-api. Changed to slf4j 1.6.1 and scala to 2.9.1
   Changed group id, added distribution management and made it s</description>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <scala.version>2.9.0-1</scala.version>
+    <scala.version>2.9.1</scala.version>
   </properties>
 
   <dependencies>
@@ -39,8 +39,8 @@
     </dependency>
     <dependency>
       <groupId>org.scala-tools.testing</groupId>
-      <artifactId>specs_2.9.0-1</artifactId>
-      <version>1.6.8</version>
+      <artifactId>specs_2.9.1</artifactId>
+      <version>1.6.9</version>
       <scope>test</scope>
     </dependency>
     <dependency>

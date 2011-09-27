@@ -9,7 +9,7 @@
 	<version>0.2-incubating-SNAPSHOT</version>
 	<description>The direct or indirect parent of all Clerezza Artifacts</description>
 	<properties>
-		<scala.version>2.9.0-1</scala.version>
+		<scala.version>2.9.1</scala.version>
 	</properties>
 	<licenses>
 		<license>
@@ -298,7 +298,7 @@
 				<plugin>
 					<groupId>org.scala-tools</groupId>
 					<artifactId>maven-scala-plugin</artifactId>
-					<version>2.9.1</version>
+					<version>${scala.version}</version>
 					<executions>
 						<execution>
 							<goals>
@@ -426,7 +426,7 @@
 			<dependency>
     				<groupId>org.scala-lang</groupId>
     				<artifactId>jline</artifactId>
-    				<version>2.9.0-1</version>
+    				<version>${scala.version}</version>
 			</dependency>
 			<dependency>
 				<groupId>junit</groupId>
