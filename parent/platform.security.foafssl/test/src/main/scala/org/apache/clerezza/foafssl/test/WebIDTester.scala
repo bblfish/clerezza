@@ -30,17 +30,20 @@ import java.security.interfaces.RSAPublicKey
 import org.apache.clerezza.rdf.core._
 import access.NoSuchEntityException
 import impl.{SimpleMGraph, PlainLiteralImpl, TypedLiteralImpl}
-import org.apache.clerezza.foafssl.ontologies._
 import org.apache.clerezza.platform.security.auth.WebIdPrincipal
 import org.apache.clerezza.foafssl.auth.{WebIDClaim, Verification, X509Claim}
 import java.util.Date
 import serializedform.Serializer
 import java.io.ByteArrayOutputStream
 import javax.security.auth.Subject
+import scala.collection.mutable
+import scala.collection.immutable
 import collection.JavaConversions._
 import org.apache.clerezza.platform.users.WebIdGraphsService
 import org.apache.clerezza.rdf.scala.utils._
-import java.security.{PrivilegedAction, AccessController}
+import org.apache.clerezza.foafssl.ontologies._
+import collection.JavaConversions._
+import java.security.{PublicKey, PrivilegedAction, AccessController}
 
 /**
  * implementation of (very early) version of test server for WebID so that the following tests
@@ -127,92 +130,197 @@ class WebIDTester {
 
 }
 
+
+abstract class ClassMap[T: Manifest]()  {
+	def clazz = manifest[T].erasure
+	/**
+	 * Map the object to the graph
+	 * @param obj: the object to map
+	 * @param optional reference to a Sommer class for cases where references inside obj need themselves to be mapped
+	 */
+	 def map(obj: T, sommer: Sommer): GraphNode
+}
+
+/**
+ * Ties an object to its class explicitly, and verifiably
+ */
+case class ClassObject[T : Manifest](obj: T) {
+	def clazz = manifest[T].erasure
+}
+
+
+/**
+ * Framework class to map java objects to graphs
+ * TODO: sommer should be a
+ */
+class Sommer(graph: MGraph)  {
+	val java2rdf = new mutable.HashMap[Any, Resource]
+	val javaClzzMappers = new mutable.HashMap[Class[_],ClassMap[_]]
+	
+	def addMapper(classMapper: ClassMap[_]) {
+		javaClzzMappers.put(classMapper.clazz, classMapper)
+	}
+	
+	def map(classObj: ClassObject[_]): Option[Resource] = {
+		java2rdf.get(classObj.obj) match {
+			case res @ Some(_) => res
+			case None => {
+				val option: Option[ClassMap[_]] = javaClzzMappers.get(classObj.clazz)
+				option match {
+					case Some(cm: ClassMap[_]) => {
+						val triples = cm.map(classObj.obj, this)
+						graph.addAll(triples.getGraph)
+						java2rdf.put(classObj.obj, triples.getNode)
+						Some(triples.getNode)
+					}
+					case None => None
+				}
+			}
+		}
+	}
+}
+
+
+
 /** All the cert tests are placed here */
 class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends Assertions {
 	import WebIDTester._
-
-	import EARL.{passed, failed, cantTell, untested}
-
-	val creds: scala.collection.mutable.Set[X509Claim] = subj.getPublicCredentials(classOf[X509Claim]);
-	val now = new Date()
+	
+	//TODO: This is really just a mapper from a WebIDClaim to a node, that names it
+	case class WIDClaim(node: Resource, webid: Literal, claim: WebIDClaim)
 
 
-	def describeTests() {
-
-		val thisDoc = (
-			bnode.a(FOAF.Document)
-				  .a(testCls)
-				  .a(PLATFORM.HeadedPage)
-              -- DCTERMS.created --> now
-			)
-
-		//
-		// Description of certificates and their public profileKeys
-		//
-		val x509claimRefs = for (claim <- creds) yield {
-			val cert = bnode
-			  (
-				cert.a(CERT.Certificate)
-					-- CERT.base64der --> Base64.encode(claim.cert.getEncoded())
+	sommer.addMapper(new ClassMap[X509Claim]() {
+		def map(x509c: X509Claim, sommer: Sommer): GraphNode =
+				( bnode.a(CERT.Certificate)
+		          -- CERT.base64der --> Base64.encode(x509c.cert.getEncoded())
+					 -- CERT.principal_key -->> sommer.map(ClassObject(x509c.cert.getPublicKey))
+					 -- LOG.semantics --> ( bnode -- LOG.includes -->> x509c.webidclaims.flatMap(c=>sommer.map(ClassObject(c))))
 				)
+	})
 
-			//
-			// Assertion public key
-			//
-			val pubkey = claim.cert.getPublicKey
-			val testCertKey = create(TEST.certificatePubkeyRecognised, cert.getNode)
-
+	sommer.addMapper(new ClassMap[WebIDClaim]() {
+		def map(idclaim: WebIDClaim, sommer: Sommer) =
+			( bnode.a(TEST.WebIDClaim)
+				  -- TEST.claimedIdentity --> { idclaim.webId.toString^^XSD.anyURI }
+				  -- TEST.claimedKey -->> { sommer.map(ClassObject(idclaim.key)) }
+			)
+	})
+	
+	sommer.addMapper(new ClassMap[PublicKey]() {
+		def map(pubkey: PublicKey, sommer: Sommer) =
 			pubkey match {
-				case rsa: RSAPublicKey => {
-					val pk = (bnode.a(RSA.RSAPublicKey)
+				case rsa: RSAPublicKey =>
+					 (bnode.a(RSA.RSAPublicKey)
 						-- RSA.modulus --> new TypedLiteralImpl(rsa.getModulus.toString(16), CERT.hex)
 						-- RSA.public_exponent --> new TypedLiteralImpl(rsa.getPublicExponent.toString(10), CERT.int_)
 						)
-					cert -- CERT.principal_key --> pk
-					val res = testCertKey.result;
-					res.description = "Certificate contains RSA key which is recognised"
-					res.outcome = EARL.passed
-					res.pointer(pk.getNode.asInstanceOf[NonLiteral])
-				}
-				case _ => {
-					testCertKey.result.description = "Certificate contains key that is not understood by WebID layer " +
-						"Pubkey algorith is " + pubkey.getAlgorithm
-					testCertKey.result.outcome = EARL.failed
-				}
+				case other => (
+					bnode.a(CERT.PublicKey)
+					   -- RDFS.comment --> ("We don't have ontologies for this key format. This one is using the algorithm "+other.getAlgorithm)
+					)
 			}
+	})
+	
 
-			//
-			// Assertion time stamp of certificate
-			//
-			val dateOkAss = create(TEST.certificateDateOk, cert.getNode)
-			val notBefore = claim.cert.getNotBefore
-			val notAfter = claim.cert.getNotAfter
+	import EARL.{passed, failed, cantTell, untested}
 
-			if (now.before(notBefore)) {
-				dateOkAss.result("Certificate time is too early. Watch out this is often due to time " +
-					"synchronisation issues accross servers", failed)
-			} else if (now.after(notAfter)) {
-				dateOkAss.result("Certificate validity time has expired. ", failed, thisDoc.getNode)
-			} else {
-				dateOkAss.result("Certificate time is valid", passed, thisDoc.getNode)
+	/**
+	 *  Collection of Sommer mapped certificates. Calculating this also builds the RDF graph for it.
+	 *  (Note, this is where specialised mappers may be interesing. All that one need to do is write mappers
+	 *   for objects)
+	 */
+	val x509creds = {
+
+		val creds: mutable.Set[X509Claim]= subj.getPublicCredentials(classOf[X509Claim])
+		val certProvidedTest = create(TEST.certificateProvided,thisSession)
+
+		val credNodes = for (x509 <- creds) yield sommer.map(ClassObject(x509))
+
+		val eC = creds.size > 0
+
+		certProvidedTest.result(
+			if (eC) "Certificate available" else "No Certificate Found",
+			if (eC) EARL.passed else EARL.failed
+		)
+
+		for (r <- credNodes) certProvidedTest.result.pointer(r)
+		
+		creds
+	};
+
+	lazy val now = new Date()
+
+	/**
+	 * A node to refer to this session.
+	 */
+	lazy val thisSession = { bnode.a(TEST.Session) }.getNode
+
+	val thisDoc : Resource = (
+			bnode.a(FOAF.Document)    //this should be a relative URI pointing to this document, not a bnode...
+				  .a(testCls)
+				  .a(PLATFORM.HeadedPage)
+              -- DCTERMS.created --> now
+		        -- FOAF.primaryTopic --> thisSession
+			).getNode
+
+
+	/**
+	 * Collection of WebID Claims mapped to nodes
+	 */
+	val webidClaims: mutable.Set[WebIDClaim] = x509creds.flatMap(certClaim => {
+		//
+		// Assertion public key
+		//
+		val testCertKey = create(TEST.certificatePubkeyRecognised, sommer.map(ClassObject(certClaim)).get) //we should always have a result here.
+		val pk = certClaim.cert.getPublicKey
+		//TODO: it is important to use the pk object as the class used by the mapper is currently PublicKey, not the subclasses!!!
+		//TODO: improve Sommer, so that it can find the best match
+		val pkNode =  sommer.map(ClassObject(pk))
+		pk match {
+			case rsa: RSAPublicKey => {
+				val res = testCertKey.result;
+				res.description = "Certificate contains RSA key which is recognised"
+				res.outcome = EARL.passed
+				res.pointer(pkNode)
 			}
-
-			cert -> claim
+			case _ => {
+				testCertKey.result.description = "Certificate contains key that is not understood by WebID layer " +
+					"Pubkey algorith is " + pk.getAlgorithm
+				testCertKey.result.outcome = EARL.failed
+				None
+			}
 		}
+		
 
 		//
-		// certificate was provided
+		// Assertion time stamp of certificate
 		//
-		val eC = x509claimRefs.size > 0
-		val ass = (
-			bnode.a(EARL.Assertion)
-				-- EARL.test --> TEST.certificateProvided
-				-- EARL.result --> (bnode.a(EARL.TestResult)
-				                     -- DC.description --> {if (eC) "Certificate available" else "No Certificate Found"}
-				                     -- EARL.outcome --> {if (eC) EARL.passed else EARL.failed})
-			)
-		if (eC) ass -- EARL.subject -->>> x509claimRefs.map(p => p._1)
-		else return
+
+		val certNode = sommer.map(ClassObject(certClaim))
+
+		val dateOkAss = create(TEST.certificateDateOk, certNode.get)
+
+		val notBefore = certClaim.cert.getNotBefore
+		val notAfter = certClaim.cert.getNotAfter
+
+		if (now.before(notBefore)) {
+			dateOkAss.result("Certificate time is too early. Watch out this is often due to time " +
+				"synchronisation issues accross servers", failed)
+		} else if (now.after(notAfter)) {
+			dateOkAss.result("Certificate validity time has expired. ", failed, thisDoc)
+		} else {
+			dateOkAss.result("Certificate time is valid", passed, thisDoc)
+		}
+		
+		certClaim.webidclaims
+		//TODO, having all this happen in the setting of a variable, that would be easy to get otherwise is odd.
+		//TODO perhaps it would be better to move these to methods, placed in an init or in the body of the class (same thing)
+	})
+	
+	
+	def describeTests() {
+
 
 
 		//
@@ -223,38 +331,38 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 		(
 		bnode.a(EARL.Assertion)
 			-- EARL.test --> TEST.webidAuthentication
+			-- EARL.subject -->> x509creds.flatMap(credential => sommer.map(ClassObject(credential)))
 			-- EARL.result --> (bnode.a(EARL.TestResult)
 						-- DC.description --> {"found " + principals.size + " valid principals"}
 						-- EARL.outcome --> {if (principals.size > 0) EARL.passed else EARL.failed}
-						-- EARL.pointer -->> principals.map(p => p.getWebId)
+						-- EARL.pointer -->> principals.map(p => p.getWebId.getUnicodeString^^XSD.anyURI)
 						)
-			-- EARL.subject -->>> x509claimRefs.map(p => p._1)
 		)
-		import collection.JavaConversions._
 
-		for ((certRef, claim) <- x509claimRefs) {
-			for (widc <- claim.webidclaims) {
-				import Verification._
-				val webidAss = create(TEST.webidClaim,
-					Seq(widc.webId, certRef.getNode)) //todo, we need to add a description of the profileKeys as found in the remote file
-				val result = webidAss.result
-				result.pointer(widc.webId)
-				result.exceptions = widc.errors
-				widc.verified match {
-					case Verified => {
-						result("claim for WebId " + widc.webId + " was verified", passed)
-						claimTests(widc)
-					}
-					case Failed => {
-						result("claim for WebID " + widc.webId + " failed", failed)
-						claimTests(widc)
-					}
-					case Unverified => {
-						result("claim for WebId " + widc.webId + " was not verified",untested)
-					}
-					case Unsupported => {
-						result("this webid is unsupported ",cantTell)
-					}
+
+		//
+		// Iterate through each claim
+		//
+
+		for (widc <- webidClaims) {
+			import Verification._
+			val webidAss = create(TEST.webidClaim, ClassObject(widc)) //todo, we need to add a description of the profileKeys as found in the remote file
+			val result = webidAss.result
+			result.exceptions = widc.errors
+			widc.verified match {
+				case Verified => {
+					result("claim for WebId " + widc.webId + " was verified", passed)
+					claimTests(widc)
+				}
+				case Failed => {
+					result("claim for WebID " + widc.webId + " failed", failed)
+					claimTests(widc)
+				}
+				case Unverified => {
+					result("claim for WebId " + widc.webId + " was not verified", untested)
+				}
+				case Unsupported => {
+					result("this webid is unsupported ", cantTell)
 				}
 			}
 		}
@@ -623,7 +731,7 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 			//
 			val asrtKeyModulusFunc = create(TEST.pubkeyRSAModulusFunctional, keylit.getNode)
 			val asrtKeyExpoFunc = create(TEST.pubkeyRSAExponentFunctional, keylit.getNode)
-			val asrtWffkey = create(TEST.profileWellFormedKey, keylit.getNode)
+			val asrtWffkey = create(TEST.profileWellFormedPubkey, keylit.getNode)
 
 
 			var claimsTobeRsaKey = pkey.hasProperty(RDF.`type`, RSA.RSAPublicKey)
@@ -690,6 +798,8 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
   */
 abstract class Assertions extends context(new SimpleMGraph())  {
 
+	val sommer = new Sommer(graph)
+	
 	/**
 	 * extend this to describe the test and build the test suite
 	 */
@@ -702,9 +812,14 @@ abstract class Assertions extends context(new SimpleMGraph())  {
 		newAssertion
 	}
 
-	def create(testName: UriRef, subjects: Seq[Resource]) = new Assertion(testName, subjects)
-
 	def create(testName: UriRef, subject: Resource) = new Assertion(testName, Seq[Resource](subject))
+
+	def create(testName: UriRef, obj: ClassObject[_]) = {
+		sommer.map(obj) match {
+			case Some(ref) => new Assertion(testName, Seq(ref))
+			case None => new Assertion(testName,Seq())
+		}
+	}
 
 	def toRdf(): TripleCollection =  {
 		for (test <- assertions) {
@@ -740,6 +855,13 @@ abstract class Assertions extends context(new SimpleMGraph())  {
 
 		def pointer(point: NonLiteral) {
 			pointers = Seq(point)
+		}
+		
+		def pointer(point: Option[Resource]) {
+			point match {
+				case Some(ref) => pointers = Seq(ref)
+				case None => Seq()
+			}
 		}
 
 
