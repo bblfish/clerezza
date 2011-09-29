@@ -90,7 +90,13 @@ public class GraphNodeWriter implements MessageBodyWriter<GraphNode> {
 			Annotation[] annotations, MediaType mediaType,
 			MultivaluedMap<String, Object> httpHeaders,
 			OutputStream entityStream) throws IOException, WebApplicationException {
-		serializer.serialize(entityStream, getExpandedContext(node), mediaType.toString());
+//was: serializer.serialize(entityStream, getExpandedContext(node), mediaType.toString());
+//this is problematic, as building a linked graph is a difficult thing, and there is no reason why everything should
+//always be linked in a graph. Since GraphNodes are used to select the correct renderer, this puts a completely overbearing
+//onus on the graph producing code to make linked graphs from furthermore what has to be a document node. It is much easier
+//for the graph producing code to return a limited graph if graph sizes get too big.
+//Perhaps one needs to find something other than GraphNodes? But what?
+		serializer.serialize(entityStream, node.getGraph(), mediaType.toString());
 	}
 
 	@Context
@@ -98,66 +104,69 @@ public class GraphNodeWriter implements MessageBodyWriter<GraphNode> {
 		this.uriInfo = uriInfo;
 	}
 
-	private TripleCollection getExpandedContext(GraphNode node) {
-		final TripleCollection result = new SimpleMGraph(node.getNodeContext());
-		final Set<Resource> expandedResources = new HashSet<Resource>();
-		expandedResources.add(node.getNode());
-		while (true) {
-			Set<Resource> additionalExpansionRes = getAdditionalExpansionResources(result);
-			additionalExpansionRes.removeAll(expandedResources);
-			if (additionalExpansionRes.size() == 0) {
-				return result;
-			}
-			for (Resource resource : additionalExpansionRes) {
-				final GraphNode additionalNode = new GraphNode(resource, node.getGraph());
-				result.addAll(additionalNode.getNodeContext());
-				expandedResources.add(resource);
-			}
-		}
-	}
+// the provider of the GraphNode should limit the graph, or some completely dif
 
-	private Set<Resource> getAdditionalExpansionResources(TripleCollection tc) {
-		final Set<UriRef> subjectExpansionProperties = getSubjectExpansionProperties();
-		final Set<UriRef> objectExpansionProperties = getObjectExpansionProperties();
-		final Set<Resource> result = new HashSet<Resource>();
-		if ((subjectExpansionProperties.size() > 0)
-				|| (objectExpansionProperties.size() > 0)) {
-			for (Triple triple : tc) {
-				final UriRef predicate = triple.getPredicate();
-				if (subjectExpansionProperties.contains(predicate)) {
-					result.add(triple.getSubject());
-				}
-				if (objectExpansionProperties.contains(predicate)) {
-					result.add(triple.getObject());
-				}
-			}
-		}
-		return result;
-	}
 
-	private Set<UriRef> getSubjectExpansionProperties() {
-		final MultivaluedMap<String, String> queryParams = uriInfo.getQueryParameters();
-		final List<String> paramValues = queryParams.get(SUBJ_EXP_PARAM);
-		if (paramValues == null) {
-			return new HashSet<UriRef>(0);
-		}
-		final Set<UriRef> result = new HashSet<UriRef>(paramValues.size());
-		for (String uriString : paramValues) {
-			result.add(new UriRef(uriString));
-		}
-		return result;
-	}
+//	private TripleCollection getExpandedContext(GraphNode node) {
+//		final TripleCollection result = new SimpleMGraph(node.getNodeContext());
+//		final Set<Resource> expandedResources = new HashSet<Resource>();
+//		expandedResources.add(node.getNode());
+//		while (true) {
+//			Set<Resource> additionalExpansionRes = getAdditionalExpansionResources(result);
+//			additionalExpansionRes.removeAll(expandedResources);
+//			if (additionalExpansionRes.size() == 0) {
+//				return result;
+//			}
+//			for (Resource resource : additionalExpansionRes) {
+//				final GraphNode additionalNode = new GraphNode(resource, node.getGraph());
+//				result.addAll(additionalNode.getNodeContext());
+//				expandedResources.add(resource);
+//			}
+//		}
+//	}
 
-	private Set<UriRef> getObjectExpansionProperties() {
-		final MultivaluedMap<String, String> queryParams = uriInfo.getQueryParameters();
-		final List<String> paramValues = queryParams.get(OBJ_EXP_PARAM);
-		if (paramValues == null) {
-			return new HashSet<UriRef>(0);
-		}
-		final Set<UriRef> result = new HashSet<UriRef>(paramValues.size());
-		for (String uriString : paramValues) {
-			result.add(new UriRef(uriString));
-		}
-		return result;
-	}
+//	private Set<Resource> getAdditionalExpansionResources(TripleCollection tc) {
+//		final Set<UriRef> subjectExpansionProperties = getSubjectExpansionProperties();
+//		final Set<UriRef> objectExpansionProperties = getObjectExpansionProperties();
+//		final Set<Resource> result = new HashSet<Resource>();
+//		if ((subjectExpansionProperties.size() > 0)
+//				|| (objectExpansionProperties.size() > 0)) {
+//			for (Triple triple : tc) {
+//				final UriRef predicate = triple.getPredicate();
+//				if (subjectExpansionProperties.contains(predicate)) {
+//					result.add(triple.getSubject());
+//				}
+//				if (objectExpansionProperties.contains(predicate)) {
+//					result.add(triple.getObject());
+//				}
+//			}
+//		}
+//		return result;
+//	}
+
+//	private Set<UriRef> getSubjectExpansionProperties() {
+//		final MultivaluedMap<String, String> queryParams = uriInfo.getQueryParameters();
+//		final List<String> paramValues = queryParams.get(SUBJ_EXP_PARAM);
+//		if (paramValues == null) {
+//			return new HashSet<UriRef>(0);
+//		}
+//		final Set<UriRef> result = new HashSet<UriRef>(paramValues.size());
+//		for (String uriString : paramValues) {
+//			result.add(new UriRef(uriString));
+//		}
+//		return result;
+//	}
+
+//	private Set<UriRef> getObjectExpansionProperties() {
+//		final MultivaluedMap<String, String> queryParams = uriInfo.getQueryParameters();
+//		final List<String> paramValues = queryParams.get(OBJ_EXP_PARAM);
+//		if (paramValues == null) {
+//			return new HashSet<UriRef>(0);
+//		}
+//		final Set<UriRef> result = new HashSet<UriRef>(paramValues.size());
+//		for (String uriString : paramValues) {
+//			result.add(new UriRef(uriString));
+//		}
+//		return result;
+//	}
 }
