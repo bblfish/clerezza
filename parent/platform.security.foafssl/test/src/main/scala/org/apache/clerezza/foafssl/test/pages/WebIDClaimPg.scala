@@ -20,21 +20,16 @@
 package org.apache.clerezza.foafssl.test.pages
 
 import org.apache.clerezza.platform.typerendering.scala.{XmlResult, SRenderlet}
-import org.apache.clerezza.platform.security.UserUtil
 import org.apache.clerezza.foafssl.test.WebIDTester
-import org.apache.clerezza.foafssl.ontologies.{RSA, CERT}
-import org.apache.clerezza.rdf.scala.utils.Preamble._
-import java.security.{PrivilegedAction, AccessController}
-import org.apache.clerezza.rdf.utils.GraphNode
-import org.apache.clerezza.rdf.core.serializedform.Serializer
-import org.apache.clerezza.foafssl.auth.{Verification, WebIDClaim, X509Claim}
-import java.io.{PrintStream, ByteArrayOutputStream}
-import xml.{Node, NodeSeq}
 import org.apache.clerezza.rdf.scala.utils.Preamble._
 import org.apache.clerezza.rdf.core._
-import org.apache.clerezza.rdf.scala.utils.{CollectedIter, RichGraphNode}
-import org.apache.clerezza.rdf.ontologies.{XSD, RDF}
-import org.apache.clerezza.platform.users.WebIdGraphsService
+import org.apache.clerezza.rdf.scala.utils.RichGraphNode
+import org.apache.clerezza.rdf.storage.web.WebProxy
+import java.util.Date
+import org.apache.clerezza.rdf.ontologies.{DC, RDF, DCTERMS}
+import scala.collection.mutable
+import xml.Elem
+import org.apache.clerezza.foafssl.ontologies._
 
 /**
  * @author bblfish
@@ -44,18 +39,23 @@ import org.apache.clerezza.platform.users.WebIdGraphsService
 class WebIDClaimPg extends SRenderlet {
 	def getRdfType() = WebIDTester.testCls
 
-	override def renderedPage(arguments: XmlResult.Arguments) = new XhtmlWebIDClaimPg(arguments, webIdGraphsService)
+	override def renderedPage(arguments: XmlResult.Arguments) = new XhtmlWebIDClaimPg(arguments, testVocab)
 
 	//TODO a renderlet should not need services,
 
-	private var webIdGraphsService: WebIdGraphsService = null
+	private var webProxy: WebProxy = null
+	
+	private var testVocab : Graph  = null
 
-	protected def bindWebIdGraphsService(webIdGraphsService: WebIdGraphsService): Unit = {
-		this.webIdGraphsService = webIdGraphsService
+	protected def bindGraphService(webProxyService: WebProxy ): Unit = {
+		this.webProxy = webProxyService
+		val ontStr = TEST.THIS_ONTOLOGY.getUnicodeString
+		val doc = ontStr.substring(0,ontStr.indexOf('#'))
+		testVocab = webProxy.getGraph(new UriRef(doc))
 	}
 
-	protected def unbindWebIdGraphsService(webIdGraphsService: WebIdGraphsService): Unit = {
-		this.webIdGraphsService = null
+	protected def unbindGraphService(webProxyService: WebProxy): Unit = {
+		this.webProxy = null
 	}
 
 
@@ -66,174 +66,146 @@ object XhtmlWebIDClaimPg {
    val emptyxml=new scala.xml.Text("")
 }
 
-class XhtmlWebIDClaimPg(arguments: XmlResult.Arguments, webIdGraphsService: WebIdGraphsService) extends XmlResult(arguments )  {
-  import XhtmlWebIDClaimPg._
-
-	resultDocModifier.setTitle("WebId Tests");
+class XhtmlWebIDClaimPg(arguments: XmlResult.Arguments, testOnt: Graph) extends XmlResult(arguments )  {
+  resultDocModifier.setTitle("WebId Tests");
 	resultDocModifier.addNodes2Elem("head", <style type="text/css">.login {{ visibility:hidden; }}</style> )
 
-  override def content = <div id="tx-content"> <h2>WebID Login Test Page</h2>
-    <p>The TLS connection was established. We do not test the basic TLS connection.</p>
-      {
-    val subj = UserUtil.getCurrentSubject();
-    val creds: scala.collection.mutable.Set[X509Claim] = collection.JavaConversions.asScalaSet(subj.getPublicCredentials(classOf[X509Claim]));
-    if (creds.size==0) <p>No X509 credentials available.</p>
-    else for (cred <- creds) yield describeX509Claim(cred)
-    }
+	lazy val tests = new RichGraphNode(EARL.Assertion,res.getGraph)/-RDF.`type`
+
+
+	override def content =
+	<div id="tx-content">
+	   <h1>WebID Login Test Page</h1>
+      <p>This page describes in detail the state of your <a href="http://webid.info/">WebID authentication</a> session
+      on {new Date()}. </p>
+
+		<p>{testView(TEST.webidAuthentication) }</p>
+
+		<h2>WebID Claims Tested</h2>
+		<p>{testView(TEST.webidClaim) }</p>
+
+		<h2>Certificate Test</h2>
+		<p>These tests were run on the certificate sent to us.</p>
+		<p>{testView(TEST.certificateOk) }</p>
+		<p>{testView(TEST.certificateProvided) }</p>
+		<p>{testView(TEST.certificateProvidedSAN) }</p>
+		<p>{testView(TEST.certificateDateOk) }</p>
+		<p>{testView(TEST.certificatePubkeyRecognised) }</p>
+		<p>{testView(TEST.certificateCriticalExtensionsOk) }</p>
+
+		<h2>Profile Tests</h2>
+		<p>These tests were run on the profiles fetched</p>
+		<p>{testView(TEST.profileOk) }</p>
+		<p>{testView(TEST.profileGet) }</p>
+		<p>{testView(TEST.profileWellFormed) }</p>
+		<p>{testView(TEST.profileAllKeysWellFormed) }</p>
+		<p>{testView(TEST.pubkeyRSAModulus) }</p>
+		<p>{testView(TEST.pubkeyRSAModulusFunctional) }</p>
+		<p>{testView(TEST.pubkeyRSAModulusLiteral) }</p>
+		<p>{testView(TEST.pubkeyRSAExponent) }</p>
+		<p>{testView(TEST.pubkeyRSAExponentFunctional) }</p>
+		<p>{testView(TEST.pubkeyRSAExponentLiteral) }</p>
+
+		<h2>Certificate Sent</h2>
+		<p>You sent us <a name="cert">the following certificate</a> in PEM format</p>
+		<pre>{new RichGraphNode(CERT.Certificate,res.getGraph)/-RDF.`type`/CERT.base64der*}
+		</pre>
+
+		<h2>Further Reference</h2>
 	  <p>For very detailed test information to send to support <a href="WebId/n3">download this n3 file</a>.</p>
   </div>
 
 
-  def describeX509Claim(claim: X509Claim) = {
-     <p>The Certificate sent can be viewed <a href="WebId/x509">in detail here</a>. The public key is:
-       <pre>{claim.cert.getPublicKey}</pre>
-     </p>
 
-     <p>The certificate sent contains {claim.webidclaims.size} WebId Claims. They are listed here, and it is shown if
-       they have been verified.</p>
-     <ul>{
-        for (idClaim <- claim.webidclaims) yield <li>{describeWebIDClaim(idClaim)}</li>
-     }</ul>
-  }
+	def selectTest(testNme: UriRef) =  new RichGraphNode(testNme, res.getGraph)/-EARL.test
 
-  def getWebIDProfile(claim: WebIDClaim): Option[GraphNode] = {
-    val som = AccessController.doPrivileged(new PrivilegedAction[Option[GraphNode]] {
-      def run = Some(new GraphNode(claim.webId, webIdGraphsService.getWebIdInfo(claim.webId).publicProfile))
-    })
-    som
-  }
+	def testresult(resource: Resource) = resource match {
+		case EARL.passed => <font color="green">passed</font>
+		case EARL.failed => <font color="red">failed</font>
+		case EARL.untested => <span>untested</span>
+		case EARL.inapplicable => <span>inapplicable</span>
+		case EARL.cantTell => <span>cannot tell</span>
+		case _ => <font>untested</font>
+	}
 
-  def describeWebIDClaim(claim: WebIDClaim) = {
-      <span>
-        Claimed ID: <a href={claim.webId.getUnicodeString}>{claim.webId.getUnicodeString}</a><br/>
-        Claim was {claim.verified}<br/>
-        {
-        claim.verified match {
-        case Verification.Verified => verifiedClaim(claim)
-        case Verification.Failed => claimFailure(claim)
-        case Verification.Unsupported => <p>WebId's with this protocol are currently unsupported</p>
-        case Verification.Unverified => <p>Currently this is not possible, but in asynchronous situations it will be</p>
-          }
-        }
-      </span>
-  }
+	def testView(testName: UriRef) = {
 
-  def verifiedClaim(claim: WebIDClaim) = {
-    <p>Supporting information from the WebID Profile
-      {val som: Option[GraphNode] = getWebIDProfile(claim)
-    som match {
-      case Some(profile) => {
-        val keys = profile /- CERT.identity
-        for (key <- keys) yield displayKey(key)
-      }
-      case None => "No remote graph?"
-    }}
-    </p>
-  }
+		<table width="100%" rules="groups">
+			<caption>{
+				new RichGraphNode(testName,testOnt)/DCTERMS.title*
+		  }</caption>
+			<thead><tr><td>description</td><td>{new RichGraphNode(testName,testOnt)/DCTERMS.description*}</td></tr></thead>
+			{ for ( testNd <- selectTest(testName)) yield {
+			val res = testNd/EARL.result
+			<tbody>
+			<tr><td>subject</td><td>{subjectView(testNd/EARL.subject)}</td></tr>
+			<tr><td>test result</td><td>{testresult(res/EARL.outcome!)}</td></tr>
+			<tr><td>result description</td><td>{res/DC.description*}</td></tr>
+			<tr><td></td><td>{subjectView(res/EARL.pointer)}</td></tr>
+			</tbody>
+			}}
+		</table>
 
-  def claimFailure(claim: WebIDClaim) = <p>
-     The Claim failed because { import collection.JavaConversions._
-       for (e: Throwable <- claim.errors) yield <pre>{
-         val str = new ByteArrayOutputStream(1024)
-         val out = new PrintStream(str)
-         e.printStackTrace(out)
-         str.toString("UTF-8")
-         }</pre>
-    }
-    </p>
+	}
 
-  def displayKey(key: RichGraphNode) = <span>
-	  {val errs = verifyKeyClosely(key)
-	  if (errs.size > 0) <ul>{errs}</ul>
-	  else scala.xml.Null
-	  }
-	  <pre>
-		  {val graph: Graph = key.getNodeContext
-	  val sout = Serializer.getInstance()
-	  val out = new ByteArrayOutputStream(1024)
-	  sout.serialize(out, graph, "text/rdf+n3")
-	  out.toString("UTF-8")}
-	  </pre>
-  </span>
+	//TODO: Why does this have to be a lazy val? If it's not a lazy val the node_description is null! (29 Sept 2011, OSX Lion, java 7)
+	lazy val node_descriptions = new mutable.HashMap[Resource,Elem]()
 
-	/**
-	 * test numbers written in the old style with non literals
-	 *
-	 * @param The node that is the number. Should be a non literal
-	 * @param The relation name to the string that identifies the number
-	 * @param The role of the number in the public key (modulus, exponent, ...)
-	 *
-	*/
-	def nonLiteralNumTest(number: RichGraphNode, relToString: UriRef, numberRole: String ): NodeSeq = {
-		val typeTest = number! match {
-			case uri: UriRef => <li>Warning: your {numberRole} is a uri. The new spec requires this to be a literal.
-					 Uri found: {uri.getUnicodeString}</li>
-			case _: BNode => <li>Warning: your {numberRole} is a blank node. The newer spec requires this to be a literal</li>
-		}
-		typeTest++
-		 {
-			val hexs = number / relToString
-			if (hexs.size > 1) {
-				<li>WARNING: Your {numberRole} has more than one relation to a hexadecimal string. Unless both of those strings
-					map to the same number, your identification experience will be very random</li>
-			} else if (hexs.size == 0) {
-				<li>WARNING: your {numberRole} has no decimal literal attached by the {relToString} relation</li>
-			} else hexs! match {
-				case bnode: NonLiteral => <li>Warning: Your {numberRole} has a relation to a non literal, where it should be a
-					relation to a literal. It is possible that logically it all works out, but don't even expect a few engines to
-					bother reflecting deeply on this. We don't check past here.</li>
-				case lit: Literal => emptyxml
+	def tag = "pnt"+node_descriptions.size
+
+	var webidclaimnum = 0
+	
+	def linkTo(node: RichGraphNode) : Elem = {
+		node_descriptions.get(node.getNode) match {
+			case None => {
+				val types = (node/RDF.`type`).map(gn=>gn.getNode)
+				if (types.contains(CERT.Certificate)) {
+					val res = <a href="#cert">the certificate sent by your browser</a>
+					node_descriptions.put(node.getNode,res)
+					res
+				} 
+				else if (types.contains( TEST.WebIDClaim) )  {
+					//the first time return the claim & the 2nd time the pointer to the claim (and give them a name)
+					val tagname = tag
+					val id = node/TEST.claimedIdentity*
+					val next = <a href={"#"+tagname}>WebID Claim {id}</a>
+					node_descriptions.put(node.getNode,next)
+					val first = <span><a name={tag}>claimed identity</a>: {id}<br/>
+						key: {linkTo(node/TEST.claimedKey)}
+					</span>
+					first
+				}
+				else if (types.contains(LOG.Formula)) {
+					webidclaimnum += 1
+				   val tagid = "widclaim"+webidclaimnum
+					val tagtxt = "WebID Claim n."+{webidclaimnum}
+					val first = <span><a name={tagid}>{tagtxt}</a><pre>{node/LOG.n3String*}</pre></span>
+					val other = <a href={"#"+tagid}>{tagtxt}</a>
+					node_descriptions.put(node.getNode,other)
+					first
+				} 
+				else if (types.contains(RSA.RSAPublicKey)) {
+					<dl>
+						<dt>modulus  (hex):</dt><dd>{node/RSA.modulus*}</dd>
+						<dt>exponent (dec):</dt><dd>{node/RSA.public_exponent*}</dd>
+					</dl>
+				}
+			   else if (types.contains(TEST.Session)) {
+					<span>This TLS session</span>
+				}
+				else <span>not done yet for a {node/RDF.`type`!}</span>
 			}
-		}
-
-	}
-
-	def literalNumTest(number: Literal): NodeSeq = {
-		number match {
-			case tl: TypedLiteral => tl.getDataType match {
-		   	case CERT.int_ => emptyxml
-			   case CERT.hex => emptyxml
-			   case CERT.decimal => emptyxml
-			   case XSD.base64Binary => <li>Base 64 binary is not a number. If you wish to have a base64 integer notation
-				   let the WebId Group know</li>
-				case XSD.hexBinary => <li>Base hex binary is not a number. If you wish to have a hex integer notation
-				   use the {CERT.hex} relation. It is easier for people to write out</li>
-				case XSD.nonNegativeInteger => emptyxml
-				case XSD.integer => emptyxml
-				case XSD.positiveInteger => emptyxml
-				case XSD.int_ => emptyxml
-				case littype => <li>We don't know how to interpret numbers of {littype}.
-					It would be better to use either
-					<a href={CERT.hex.getUnicodeString}>cert:hex</a> or <a href={CERT.int_.getUnicodeString}>cert:int</a></li>
-			}
-			case _: Literal => <li>Warning: you need to put a literal type, so we can know how to interpret the string.
-		</li>
+			case Some(node) => node
 		}
 	}
 
-	def verifyKeyClosely(key: RichGraphNode) : NodeSeq= {
-		val moduli = key/RSA.modulus
-		val modWarn = if (moduli.size>1) {
-			<li>Warning: you have written the modulus out in more than one way. If they a are not equal your
-				connections might be alternatively successful</li>
-		} else if (moduli.size==0) {
-			<li>Warning: you have no modulus here. RSA keys must have one modulus</li>
-		} else  moduli! match {
-				 case _: NonLiteral => nonLiteralNumTest(moduli(0),CERT.hex,"modulus")
-				 case lit: Literal => literalNumTest(lit)
+	def subjectView(subj: RichGraphNode) = {
+		subj! match {
+			case lit: Literal => <span>{lit.getLexicalForm}</span>
+			case bnode: BNode => linkTo(subj)
+			case uri: UriRef => <a href={uri.getUnicodeString}>{uri.getUnicodeString}</a>
 		}
-		val expts = key/RSA.public_exponent
-		val expWarn = if (expts.size>1) {
-			<li>Warning: you have more than one exponent. They must be equal, or your connections will be unpredicable</li>
-
-		} else if (expts.size==0) {
-			<li>Warning: you have no exponent here. RSA keys must have one public exponent</li>
-		} else expts! match {
-				 case _: NonLiteral => nonLiteralNumTest(expts(0),CERT.decimal,"exponent")
-				 case lit: Literal => literalNumTest(lit)
-		}
-
-		return modWarn ++ expWarn
 	}
+
 
 }

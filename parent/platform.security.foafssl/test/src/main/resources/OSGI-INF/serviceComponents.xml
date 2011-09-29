@@ -16,7 +16,7 @@
               <provide interface="org.apache.clerezza.platform.typerendering.TypeRenderlet"/>
         </service>
         <property name="service.pid" value="org.apache.clerezza.foafssl.test.pages.WebIDClaimPg"/>
-        <reference name="webIdGraphsService" interface="org.apache.clerezza.platform.users.WebIdGraphsService"
-				   cardinality="1..1" policy="static" bind="bindWebIdGraphsService" unbind="unbindWebIdGraphsService"/>
+        <reference name="webIdGraphsService" interface="org.apache.clerezza.rdf.storage.web.WebProxy"
+				   cardinality="1..1" policy="static" bind="bindGraphService" unbind="unbindGraphService"/>
     </scr:component>
 </components>

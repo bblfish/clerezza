@@ -25,7 +25,6 @@ import org.apache.clerezza.rdf.utils.GraphNode
 import javax.ws.rs._
 import org.apache.clerezza.rdf.ontologies._
 import org.slf4j.{LoggerFactory, Logger}
-import org.apache.clerezza.rdf.core.impl.util.Base64
 import java.security.interfaces.RSAPublicKey
 import org.apache.clerezza.rdf.core._
 import access.NoSuchEntityException
@@ -44,6 +43,7 @@ import org.apache.clerezza.rdf.scala.utils._
 import org.apache.clerezza.foafssl.ontologies._
 import collection.JavaConversions._
 import java.security.{PublicKey, PrivilegedAction, AccessController}
+import org.apache.commons.codec.binary.Base64
 
 /**
  * implementation of (very early) version of test server for WebID so that the following tests
@@ -73,30 +73,25 @@ class WebIDTester {
 	 * return a graph describing the tests that succeeded or failed for this resource
 	 */
    @GET
-   @Produces(Array("application/rdf+xml","text/turtle","text/n3"))
-   def getTestAuthentication(): TripleCollection = {
+   def getTestAuthentication(): GraphNode = {
 	   val subject = UserUtil.getCurrentSubject()
-	   return AccessController.doPrivileged(new PrivilegedAction[TripleCollection] {
-			def run: TripleCollection = {
-				val certTester = new CertTests(subject, webIdGraphsService)
-				certTester.describeTests()
-				return certTester.toRdf()
-			}
+	   return AccessController.doPrivileged(new PrivilegedAction[GraphNode] {
+			def run = new CertTests(subject, webIdGraphsService).thisDoc
 	   })
    }
 
-	@GET
-	@Produces(Array("application/xhtml+xml","text/html"))
-	def getTestAuthHtml(): GraphNode = {
-		import WebIDTester._
-		new context {
-			val doc = (
-			bnode.a(FOAF.Document)
-				  .a(testCls)
-				  .a(PLATFORM.HeadedPage)
-			)
-		}.doc
-	}
+//	@GET
+//	@Produces(Array("application/xhtml+xml","text/html"))
+//	def getTestAuthHtml(): GraphNode = {
+//		import WebIDTester._
+//		new context {
+//			val doc = (
+//			bnode.a(FOAF.Document)
+//				  .a(testCls)
+//				  .a(PLATFORM.HeadedPage)
+//			)
+//		}.doc
+//	}
 
 
 	@GET
@@ -193,7 +188,7 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 	sommer.addMapper(new ClassMap[X509Claim]() {
 		def map(x509c: X509Claim, sommer: Sommer): GraphNode =
 				( bnode.a(CERT.Certificate)
-		          -- CERT.base64der --> Base64.encode(x509c.cert.getEncoded())
+		          -- CERT.base64der --> new String(Base64.encodeBase64Chunked(x509c.cert.getEncoded()),"UTF-8")
 					 -- CERT.principal_key -->> sommer.map(ClassObject(x509c.cert.getPublicKey))
 					 -- LOG.semantics --> ( bnode -- LOG.includes -->> x509c.webidclaims.flatMap(c=>sommer.map(ClassObject(c))))
 				)
@@ -202,7 +197,7 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 	sommer.addMapper(new ClassMap[WebIDClaim]() {
 		def map(idclaim: WebIDClaim, sommer: Sommer) =
 			( bnode.a(TEST.WebIDClaim)
-				  -- TEST.claimedIdentity --> { idclaim.webId.toString^^XSD.anyURI }
+				  -- TEST.claimedIdentity --> { idclaim.webId.getUnicodeString^^XSD.anyURI }
 				  -- TEST.claimedKey -->> { sommer.map(ClassObject(idclaim.key)) }
 			)
 	})
@@ -211,9 +206,11 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 		def map(pubkey: PublicKey, sommer: Sommer) =
 			pubkey match {
 				case rsa: RSAPublicKey =>
+					 val mod =rsa.getModulus.toString(16)
+					 val nicemod = mod.grouped(2).grouped(40).map(_.mkString(" ")).mkString("\n")
 					 (bnode.a(RSA.RSAPublicKey)
-						-- RSA.modulus --> new TypedLiteralImpl(rsa.getModulus.toString(16), CERT.hex)
-						-- RSA.public_exponent --> new TypedLiteralImpl(rsa.getPublicExponent.toString(10), CERT.int_)
+						-- RSA.modulus --> (nicemod^^CERT.hex )
+						-- RSA.public_exponent --> (rsa.getPublicExponent.toString(10)^^CERT.int_ )
 						)
 				case other => (
 					bnode.a(CERT.PublicKey)
@@ -230,7 +227,7 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 	 *  (Note, this is where specialised mappers may be interesing. All that one need to do is write mappers
 	 *   for objects)
 	 */
-	val x509creds = {
+	protected val x509creds = {
 
 		val creds: mutable.Set[X509Claim]= subj.getPublicCredentials(classOf[X509Claim])
 		val certProvidedTest = create(TEST.certificateProvided,thisSession)
@@ -249,26 +246,32 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 		creds
 	};
 
-	lazy val now = new Date()
+	protected lazy val now = new Date()
 
 	/**
 	 * A node to refer to this session.
 	 */
-	lazy val thisSession = { bnode.a(TEST.Session) }.getNode
+	protected lazy val thisSession = { bnode.a(TEST.Session) }.getNode
 
-	val thisDoc : Resource = (
-			bnode.a(FOAF.Document)    //this should be a relative URI pointing to this document, not a bnode...
+	protected val thisDocRef : Resource =
+       ( bnode.a(FOAF.Document)    //this should be a relative URI pointing to this document, not a bnode...
 				  .a(testCls)
 				  .a(PLATFORM.HeadedPage)
-              -- DCTERMS.created --> now
-		        -- FOAF.primaryTopic --> thisSession
+               -- DCTERMS.created --> now
+		         -- FOAF.primaryTopic --> thisSession
 			).getNode
 
+
+	override lazy val thisDoc = {
+		  describeTests
+		  toRdf
+		  node(thisDocRef)
+	}
 
 	/**
 	 * Collection of WebID Claims mapped to nodes
 	 */
-	val webidClaims: mutable.Set[WebIDClaim] = x509creds.flatMap(certClaim => {
+	protected val webidClaims: mutable.Set[WebIDClaim] = x509creds.flatMap(certClaim => {
 		//
 		// Assertion public key
 		//
@@ -305,12 +308,12 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 		val notAfter = certClaim.cert.getNotAfter
 
 		if (now.before(notBefore)) {
-			dateOkAss.result("Certificate time is too early. Watch out this is often due to time " +
-				"synchronisation issues accross servers", failed)
+			dateOkAss.result("The certificate will only be valid on "+notBefore+" This type of issue can be due to time " +
+				"synchronisation issues accross servers", failed, "tested at "+now)
 		} else if (now.after(notAfter)) {
-			dateOkAss.result("Certificate validity time has expired. ", failed, thisDoc)
+			dateOkAss.result("Certificate validity time expired on "+notAfter, failed, "tested at "+now )
 		} else {
-			dateOkAss.result("Certificate time is valid", passed, thisDoc)
+			dateOkAss.result("Certificate time is valid. It is between "+notBefore+" and "+notAfter, passed, "tested at "+now)
 		}
 		
 		certClaim.webidclaims
@@ -319,7 +322,7 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 	})
 	
 	
-	def describeTests() {
+	protected def describeTests() {
 
 
 
@@ -370,7 +373,7 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 
 	// more detailed tester for claims that passed or failed
 	// even tester that succeed could be just succeeding by chance (if public profileKeys are badly written out for eg)
-	def claimTests(claim: WebIDClaim) {
+	protected def claimTests(claim: WebIDClaim) {
 		val sem: Option[GraphNode] = try {
 			Some(new GraphNode(claim.webId, webIdGraphsService.getWebIdInfo(claim.webId).publicProfile)) //webProxy.fetchSemantics(claim.webId, Cache.CacheOnly)
 		} catch {
@@ -403,7 +406,7 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 	 * @param litRef a resource to the literal as described in the test graph
 	 * @return true, if the modulus is recognised as parsing
 	 */
-	def testRSAModulus(modulusNode: RichGraphNode, litRef: Resource):Boolean = {
+	protected def testRSAModulus(modulusNode: RichGraphNode, litRef: Resource):Boolean = {
 		val asrtKeyModulusLit = create(TEST.pubkeyRSAModulusLiteral, litRef)
 		val asrtKeyMod = create(TEST.pubkeyRSAModulus, litRef)
 		val asrtKeyModulusOldFunc = create(TEST.pubkeyRSAModulusOldFunctional,litRef)
@@ -490,7 +493,7 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 									"a modulus", failed)
 							} catch {
 								case e: NumberFormatException => {
-									reskeyModLit("Modulus cert:decimal is failed to parse", failed, tl)
+									reskeyModLit("Modulus cert:decimal failed to parse", failed, tl)
 								}
 							}
 						}
@@ -565,7 +568,7 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 	 * @param litRef a reference to the literal as described in the test graph
 	 * @return true if the exponent parses correctly
 	 */
-	def testRSAExp(exponentNode: RichGraphNode, litRef: Resource) : Boolean = {
+	protected def testRSAExp(exponentNode: RichGraphNode, litRef: Resource) : Boolean = {
 		val asrtKeyExpLit = create(TEST.pubkeyRSAExponentLiteral, litRef)
 		val asrtKeyExp = create(TEST.pubkeyRSAExponent, litRef)
 		val asrtKeyExpOldFunc = create(TEST.pubkeyRSAExponentOldFunctional,litRef)
@@ -641,7 +644,7 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 						case CERT.decimal => {
 							try {
 								BigInt(tl.getLexicalForm)
-								reskeyExpLit("Exponent is of type xsd:int. It parsed ok.", passed)
+								reskeyExpLit("Exponent is of type xsd:int. It parsed ok.", passed,tl)
 								result = true
 							} catch {
 								case e: NumberFormatException => {
@@ -711,7 +714,7 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 	}
 
 
-	def testKeys(profileKeys: CollectedIter[RichGraphNode]) {
+	protected def testKeys(profileKeys: CollectedIter[RichGraphNode]) {
 
 		for (pkey <- profileKeys) yield {
 			//
@@ -723,7 +726,7 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 			sout.serialize(out, graph, "text/rdf+n3")
 			val n3String = out.toString("UTF-8")
 			//todo: turtle mime type literal?
-			val keylit: GraphNode = bnode --  OWL.sameAs --> (n3String^^"http://purl.org/NET/mediatypes/text/turtle".uri)
+			val keylit: GraphNode = bnode.a(LOG.Formula) --  LOG.n3String --> n3String
 
 
 			//
@@ -776,7 +779,7 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 				//we could have a problem
 			} else {
 				asrtKeyExpoFunc.result("Found one Modulus", passed)
-				rsaExpOk = testRSAExp(mods, keylit.getNode)
+				rsaExpOk = testRSAExp(exps, keylit.getNode)
 			}
 
 			if (rsaExpOk && rsaModOk) {
@@ -800,14 +803,11 @@ abstract class Assertions extends context(new SimpleMGraph())  {
 
 	val sommer = new Sommer(graph)
 	
-	/**
-	 * extend this to describe the test and build the test suite
-	 */
-	def describeTests()
+   val thisDoc: GraphNode
 
 	var assertions: List[Assertion] = Nil
 
-	def add(newAssertion: Assertion) = {
+	protected def add(newAssertion: Assertion) = {
 		assertions = newAssertion :: assertions
 		newAssertion
 	}
@@ -816,8 +816,8 @@ abstract class Assertions extends context(new SimpleMGraph())  {
 
 	def create(testName: UriRef, obj: ClassObject[_]) = {
 		sommer.map(obj) match {
-			case Some(ref) => new Assertion(testName, Seq(ref))
-			case None => new Assertion(testName,Seq())
+			case Some(ref) => new Assertion(testName, Seq[Resource](ref))
+			case None => new Assertion(testName,Seq[Resource]())
 		}
 	}
 
