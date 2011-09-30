@@ -272,10 +272,12 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 	 * Collection of WebID Claims mapped to nodes
 	 */
 	protected val webidClaims: mutable.Set[WebIDClaim] = x509creds.flatMap(certClaim => {
+		val certNode = sommer.map(ClassObject(certClaim)).get
+
 		//
 		// Assertion public key
 		//
-		val testCertKey = create(TEST.certificatePubkeyRecognised, sommer.map(ClassObject(certClaim)).get) //we should always have a result here.
+		val testCertKey = create(TEST.certificatePubkeyRecognised, certNode) //we should always have a result here.
 		val pk = certClaim.cert.getPublicKey
 		//TODO: it is important to use the pk object as the class used by the mapper is currently PublicKey, not the subclasses!!!
 		//TODO: improve Sommer, so that it can find the best match
@@ -294,15 +296,30 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 				None
 			}
 		}
+
+		//
+		// Assertion of existence of SAN
+		//
+
+		val sanInCert = create(TEST.certificateProvidedSAN, certNode)
 		
+		certClaim.webidclaims.size match {
+			case 0 =>
+				sanInCert.result("The certificate does not contain any WebIDs in the Subject Alternative Name field.",failed)
+			case 1 =>
+				sanInCert.result("The certificate contains one WebID in the Subject Alternative Name field.",passed ,
+										certClaim.webidclaims.head.webId)
+			case _ => {
+				sanInCert.result("The certificate contains"+certClaim.webidclaims.size+
+				" WebIDs in the Subject Alternative Name field.",passed)
+				sanInCert.result.pointers = certClaim.webidclaims.map(_.webId).toSeq
+			}
+		}
 
 		//
 		// Assertion time stamp of certificate
 		//
-
-		val certNode = sommer.map(ClassObject(certClaim))
-
-		val dateOkAss = create(TEST.certificateDateOk, certNode.get)
+		val dateOkAss = create(TEST.certificateDateOk, certNode)
 
 		val notBefore = certClaim.cert.getNotBefore
 		val notAfter = certClaim.cert.getNotAfter
@@ -323,8 +340,6 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 	
 	
 	protected def describeTests() {
-
-
 
 		//
 		// WebID authentication succeeded
@@ -384,13 +399,21 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 		sem match {
 			case Some(profile) => {
 				if (profile.getGraph.size() > 0) {
-					profileXst.result("Profile was fetched. The information about this is not yet very detailed" +
-						" in Clerezza. Later will be able to give more details.", passed)
-					testKeys(profile /- CERT.identity)
+					profileXst.result("Profile was fetched. The information about when this was done is not yet very detailed" +
+						" in Clerezza.", passed)
+					val results = testKeys(profile /- CERT.identity)
+
+		         val allKeysGood = create(TEST.profileAllKeysWellFormed, claim.webId)
+
+					results.fold(true)((a,b)=>a & b) match {
+						case true =>
+							allKeysGood.result("All keys were found to be good in this profile",passed)
+						case false =>
+							allKeysGood.result("Some keys were found problematic. This is not necessarily fatal.",failed)
+					}
 
 				} else {
-					profileXst.result("Profile seems to have been fetched but it contains very little" +
-						" information. There may be other issues too", cantTell)
+					profileXst.result("Profile seems to have been fetched but it contains no machine readable information", cantTell)
 				}
 
 			}
@@ -714,8 +737,7 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 	}
 
 
-	protected def testKeys(profileKeys: CollectedIter[RichGraphNode]) {
-
+	protected def testKeys(profileKeys: CollectedIter[RichGraphNode]) =
 		for (pkey <- profileKeys) yield {
 			//
 			//create a pointer to this key, so that future tester can refer to it
@@ -730,7 +752,7 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 
 
 			//
-			// some of the tester we will complete here
+			// some of the tests we will complete here
 			//
 			val asrtKeyModulusFunc = create(TEST.pubkeyRSAModulusFunctional, keylit.getNode)
 			val asrtKeyExpoFunc = create(TEST.pubkeyRSAExponentFunctional, keylit.getNode)
@@ -784,10 +806,11 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 
 			if (rsaExpOk && rsaModOk) {
 				asrtWffkey.result("Modulus and Exponent of key good", passed)
-			}
+				true
+			} else false
 
 		}
-	}
+
 }
 
 /**
@@ -863,6 +886,7 @@ abstract class Assertions extends context(new SimpleMGraph())  {
 				case None => Seq()
 			}
 		}
+
 
 
 		// a method to deal with most usual case
