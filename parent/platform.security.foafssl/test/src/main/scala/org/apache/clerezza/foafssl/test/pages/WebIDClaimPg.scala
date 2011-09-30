@@ -179,7 +179,7 @@ class XhtmlWebIDClaimPg(arguments: XmlResult.Arguments, testOnt: Graph) extends 
 					webidclaimnum += 1
 				   val tagid = "widclaim"+webidclaimnum
 					val tagtxt = "WebID Claim n."+{webidclaimnum}
-					val first = <span><a name={tagid}>{tagtxt}</a><pre>{node/LOG.n3String*}</pre></span>
+					val first = <span><a name={tagid}>{tagtxt}</a><br/><code>{node/LOG.n3String*}</code></span>
 					val other = <a href={"#"+tagid}>{tagtxt}</a>
 					node_descriptions.put(node.getNode,other)
 					first
