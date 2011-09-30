@@ -24,12 +24,12 @@ import org.apache.clerezza.foafssl.test.WebIDTester
 import org.apache.clerezza.rdf.scala.utils.Preamble._
 import org.apache.clerezza.rdf.core._
 import org.apache.clerezza.rdf.scala.utils.RichGraphNode
-import org.apache.clerezza.rdf.storage.web.WebProxy
 import java.util.Date
 import org.apache.clerezza.rdf.ontologies.{DC, RDF, DCTERMS}
 import scala.collection.mutable
 import xml.Elem
 import org.apache.clerezza.foafssl.ontologies._
+import org.apache.clerezza.rdf.storage.web.{Cache, WebProxy}
 
 /**
  * @author bblfish
@@ -51,7 +51,7 @@ class WebIDClaimPg extends SRenderlet {
 		this.webProxy = webProxyService
 		val ontStr = TEST.THIS_ONTOLOGY.getUnicodeString
 		val doc = ontStr.substring(0,ontStr.indexOf('#'))
-		testVocab = webProxy.getGraph(new UriRef(doc))
+		testVocab = webProxy.getGraph(new UriRef(doc),Cache.ForceUpdate)
 	}
 
 	protected def unbindGraphService(webProxyService: WebProxy): Unit = {
