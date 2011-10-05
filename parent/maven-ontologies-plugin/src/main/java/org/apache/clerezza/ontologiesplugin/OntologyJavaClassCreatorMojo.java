@@ -91,7 +91,7 @@ public class OntologyJavaClassCreatorMojo extends AbstractMojo {
 	@Override
 	public void execute() throws MojoExecutionException {
 		supportedFormats.put(".nt", "text/rdf+nt");
-		supportedFormats.put(".n3", "text/rdf+n3");
+		supportedFormats.put(".n3", "text/n3");
 		supportedFormats.put(".rdf", "application/rdf+xml");
 		supportedFormats.put(".ttl", "text/turtle");
 		supportedFormats.put(".turtle", "text/turtle");

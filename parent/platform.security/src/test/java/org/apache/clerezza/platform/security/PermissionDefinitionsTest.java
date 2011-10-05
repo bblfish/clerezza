@@ -53,7 +53,7 @@ public class PermissionDefinitionsTest {
 
 		final Graph graph = Parser.getInstance()
 				.parse(getClass().getResourceAsStream("systemgraph.nt"),
-						"text/rdf+n3");		
+						"text/n3");		
 		this.permissionDefinitions = new PermissionDefinitions(
 				new SimpleMGraph(graph.iterator()));
 

@@ -25,9 +25,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 
 import javax.ws.rs.Produces;
 import javax.ws.rs.WebApplicationException;
@@ -38,11 +35,6 @@ import javax.ws.rs.core.UriInfo;
 import javax.ws.rs.ext.MessageBodyWriter;
 import javax.ws.rs.ext.Provider;
 
-import org.apache.clerezza.rdf.core.Resource;
-import org.apache.clerezza.rdf.core.Triple;
-import org.apache.clerezza.rdf.core.TripleCollection;
-import org.apache.clerezza.rdf.core.UriRef;
-import org.apache.clerezza.rdf.core.impl.SimpleMGraph;
 import org.apache.clerezza.rdf.utils.GraphNode;
 
 /**
@@ -60,7 +52,7 @@ import org.apache.clerezza.rdf.utils.GraphNode;
  * @author reto
  */
 @Provider
-@Produces({SupportedFormat.N3, SupportedFormat.N_TRIPLE,
+@Produces({SupportedFormat.N3, SupportedFormat.OLD_N3, SupportedFormat.N_TRIPLE,
 	SupportedFormat.RDF_XML, SupportedFormat.TURTLE,
 	SupportedFormat.X_TURTLE, SupportedFormat.RDF_JSON})
 public class GraphNodeWriter implements MessageBodyWriter<GraphNode> {

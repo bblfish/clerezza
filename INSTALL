@@ -31,13 +31,3 @@ TODO
 
 You can get free CA certificates for your server from https://www.startssl.com/
 
-WORKAROUND
-==========
-
-The current release requires javax.servlet.api 3.0.1 which is not yet published on the main maven repositories. 
-Install it with
-
-$ cd ~/.m2/repository/javax/servlet/servlet-api
-$ mkdir 3.0.1
-$ cd 3.0.1
-$ curl http://repo1.maven.org/maven2/javax/servlet/javax.servlet-api/3.0.1/javax.servlet-api-3.0.1.jar > servlet-api-3.0.1.jar

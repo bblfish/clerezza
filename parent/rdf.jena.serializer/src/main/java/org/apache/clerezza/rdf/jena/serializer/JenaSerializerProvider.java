@@ -44,10 +44,10 @@ import org.apache.felix.scr.annotations.Service;
 @Service(SerializingProvider.class)
 @Property(name="supportedFormat", value={SupportedFormat.RDF_XML,
 	SupportedFormat.TURTLE,	SupportedFormat.X_TURTLE,
-	SupportedFormat.N_TRIPLE, SupportedFormat.N3})
+	SupportedFormat.N_TRIPLE, SupportedFormat.N3, SupportedFormat.OLD_N3})
 @SupportedFormat({SupportedFormat.RDF_XML,
 	SupportedFormat.TURTLE,	SupportedFormat.X_TURTLE,
-	SupportedFormat.N_TRIPLE, SupportedFormat.N3})
+	SupportedFormat.N_TRIPLE, SupportedFormat.N3, SupportedFormat.OLD_N3})
 public class JenaSerializerProvider implements SerializingProvider {
 
 	@Override
@@ -77,7 +77,7 @@ public class JenaSerializerProvider implements SerializingProvider {
 				formatIdentifier.equals(SupportedFormat.X_TURTLE)) {
 			return "TURTLE";
 		}
-		if (formatIdentifier.equals(SupportedFormat.N3)) {
+		if (formatIdentifier.equals(SupportedFormat.N3)||formatIdentifier.equals(SupportedFormat.OLD_N3)) {
 			return "N3";
 		}
 		if (formatIdentifier.equals(SupportedFormat.N_TRIPLE)) {

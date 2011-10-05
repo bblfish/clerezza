@@ -745,7 +745,7 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 			val graph: Graph = pkey.getNodeContext
 			val sout = Serializer.getInstance()
 			val out = new ByteArrayOutputStream(512)
-			sout.serialize(out, graph, "text/rdf+n3")
+			sout.serialize(out, graph, "text/n3")
 			val n3String = out.toString("UTF-8")
 			//todo: turtle mime type literal?
 			val keylit: GraphNode = bnode.a(LOG.Formula) --  LOG.n3String --> n3String

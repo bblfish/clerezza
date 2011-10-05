@@ -80,7 +80,7 @@ public class JenaParserProvider implements ParsingProvider {
 				formatIdentifier.equals(SupportedFormat.X_TURTLE)) {
 			return "TURTLE";
 		}
-		if (formatIdentifier.equals(SupportedFormat.N3)) {
+		if (formatIdentifier.equals(SupportedFormat.N3)||formatIdentifier.equals(SupportedFormat.OLD_N3)) {
 			return "N3";
 		}
 		if (formatIdentifier.equals(SupportedFormat.N_TRIPLE)) {

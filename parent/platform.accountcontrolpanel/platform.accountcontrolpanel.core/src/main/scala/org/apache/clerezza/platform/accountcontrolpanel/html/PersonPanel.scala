@@ -179,7 +179,7 @@ class PersonPanel extends SRenderlet {
 				<pre>{val s = org.apache.clerezza.rdf.core.serializedform.Serializer.getInstance();
 				import java.io._
 				val bout = new ByteArrayOutputStream()
-				s.serialize(bout, agent.getGraph(), "text/rdf+n3");
+				s.serialize(bout, agent.getGraph(), "text/n3");
 				bout.toString("UTF-8")
 				}</pre>
 			</code>

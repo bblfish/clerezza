@@ -40,7 +40,7 @@ import org.apache.clerezza.rdf.core.Graph;
  * @author reto
  */
 @Provider
-@Consumes({SupportedFormat.N3, SupportedFormat.N_TRIPLE,
+@Consumes({SupportedFormat.N3, SupportedFormat.OLD_N3, SupportedFormat.N_TRIPLE,
 	SupportedFormat.RDF_XML, SupportedFormat.TURTLE,
 	SupportedFormat.X_TURTLE, SupportedFormat.RDF_JSON})
 public class GraphReader implements MessageBodyReader<Graph> {
