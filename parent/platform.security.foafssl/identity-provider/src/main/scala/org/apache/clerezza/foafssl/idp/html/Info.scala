@@ -22,7 +22,7 @@ package org.apache.clerezza.foafssl.idp.html
 import org.apache.clerezza.platform.typerendering.scala.{XmlResult, SRenderlet}
 import org.apache.clerezza.rdf.scala.utils._
 import org.apache.clerezza.rdf.ontologies.RDF
-import org.apache.clerezza.foafssl.ontologies.{CERT, RSA, WEBIDPROVIDER}
+import org.apache.clerezza.foafssl.ontologies.{CERT, WEBIDPROVIDER}
 import java.net.URLEncoder
 
 /**
@@ -118,17 +118,11 @@ class XhtmlInfoPg(arguments: XmlResult.Arguments) extends XmlResult(arguments ) 
 
 		<ul>
 			<li>Key Type: <pre>{key/RDF.`type`*}</pre></li>
-		   <li>public exponent (decimal): <pre>{key/RSA.public_exponent*}</pre> </li>
+		   <li>public exponent (decimal): <pre>{key/CERT.exponent*}</pre> </li>
 		   <li>modulus (decimal):<br/>
-			   <pre>{key/RSA.modulus*}</pre>
+			   <pre>{key/CERT.modulus*}</pre>
 		   </li>
 		</ul>
 
-	   <p>For ease of use, depending on which tool you use, here is the public key in a PEM format:</p>
-<pre>
------BEGIN PUBLIC KEY-----
-{key/CERT.base64der*}
------END PUBLIC KEY-----
-</pre>
 	</div>
 }

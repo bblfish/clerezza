@@ -22,7 +22,6 @@ import org.apache.clerezza.rdf.core._
 import org.apache.clerezza.rdf.scala.utils._
 import org.apache.clerezza.rdf.scala.utils.Preamble._
 import org.apache.clerezza.foafssl.ontologies.CERT
-import org.apache.clerezza.foafssl.ontologies.RSA
 import org.apache.clerezza.platform.typerendering.scala._
 import java.math.BigInteger
 import java.util.Date
@@ -215,15 +214,15 @@ class ProfilePanel extends SRenderlet {
 			  <tr><th>Delete</th><th>Certificate Details</th></tr>
 			  <input name="webId" id="webId" type="hidden" value={agent*} />
 			  <tbody>{
-				  for (key <- agent/-CERT.identity )
-					yield { val modulus = (key/RSA.modulus).as[BigInteger]
-							if (modulus == null)  <span/> //todo: broken public key, should delete it
+				  for (key <- agent/CERT.key )
+					yield { val modulus = (key/CERT.modulus).toList
+							if (modulus.size>0)  <span/> //todo: broken public key, should delete it
 							else <tr><td><input type="checkbox" name="keyhash" value={modulus.hashCode().toString()}/></td>
 						<td><table>
 							<tr><td class="propvalue">Created:</td><td>{beautifyDate(key/DC.date )}</td></tr>
 							<tr><td class="propvalue">Comment:</td><td>{ key/RDFS.comment* }</td></tr>
-							<tr><td class="propvalue multiline">Modulus:</td><td><code>{ beautifyHex(key/RSA.modulus) }</code></td></tr>
-							<tr><td class="propvalue">Exponent:</td><td><code>{ beautifyInt(key/RSA.public_exponent) }</code></td></tr>
+							<tr><td class="propvalue multiline">Modulus:</td><td><code>{ beautifyHex(key/CERT.modulus) }</code></td></tr>
+							<tr><td class="propvalue">Exponent:</td><td><code>{ beautifyInt(key/CERT.exponent) }</code></td></tr>
 							</table>
 						</td>
 								</tr>}
@@ -248,25 +247,20 @@ class ProfilePanel extends SRenderlet {
 
 
 
-	  def beautifyDate(dtIt: CollectedIter[RichGraphNode]) {
-		  if (0 == dtIt.size) return "_"
+	  def beautifyDate(dtIt: CollectedIter[RichGraphNode])= {
+		  if (0 == dtIt.size) "_"
 		  DateFormat.getDateTimeInstance(DateFormat.LONG,DateFormat.FULL).format(dtIt.as[Date])
 	  }
 
-
+    //this should not be done if it generates RDFa
 	  def beautifyHex(dtIt: CollectedIter[RichGraphNode]): String = {
 		  if (0 == dtIt.size) return "warning! missing. Key invalid"
 		  //this is a problem, it should always be here or it is invalid, and key should be removed
-		  val bigint: BigInteger = dtIt.as[BigInteger]
-		  val bstr = bigint.toString(16).toUpperCase;
-		  val sbuf = new StringBuffer(bstr.size + (bstr.size/2)+10)
-		  var cnt = 0
-		  for (c <- bstr.toCharArray) {
-			if ((cnt % 2) == 0) sbuf.append(' ')
-			sbuf.append(c)
-			cnt += 1
-		  }
-		  sbuf.toString
+      dtIt ! match {
+        case lt: Literal => lt.getLexicalForm.sliding(50).map(str=>str.sliding(2).mkString(" ")).mkString("<br/>")
+        case _ => "not a literal"  
+      }
+      
 		}
 
 

@@ -21,8 +21,7 @@ package org.apache.clerezza.foafssl.idp
 
 import org.slf4j.scala.Logging
 import java.text.SimpleDateFormat
-import org.apache.clerezza.foafssl.ontologies.{RSA, WEBIDPROVIDER, CERT}
-import java.security.interfaces.{RSAPrivateKey, RSAPublicKey}
+import org.apache.clerezza.foafssl.ontologies.{WEBIDPROVIDER, CERT}
 import org.apache.clerezza.rdf.scala.utils._
 import javax.ws.rs._
 import core._
@@ -32,7 +31,6 @@ import org.apache.clerezza.jaxrs.utils.RedirectUtil
 import org.osgi.service.component.ComponentContext
 import org.bouncycastle.openssl.PEMWriter
 import java.io.StringWriter
-import org.apache.clerezza.rdf.ontologies.{PLATFORM, FOAF}
 import org.apache.clerezza.foafssl.auth.X509Claim
 import org.apache.clerezza.rdf.core.access.TcManager
 import java.security.{PrivilegedAction, AccessController, Signature, KeyStore}
@@ -47,6 +45,9 @@ import collection.immutable.{WrappedString, StringOps}
 import org.apache.clerezza.rdf.core.impl.SimpleMGraph
 import org.apache.clerezza.rdf.core.{Literal, UriRef}
 import collection.mutable.WrappedArray
+import org.apache.clerezza.rdf.ontologies.{XSD, PLATFORM, FOAF}
+import java.security.interfaces.{RSAKey, RSAPrivateKey, RSAPublicKey}
+import org.apache.clerezza.rdf.scala.utils
 
 
 object IdentityProvider {
@@ -98,15 +99,12 @@ class IdentityProvider extends Logging {
 		}
 
 		private def publicKeyNode = (
-			bnode.a( RSA.RSAPublicKey)
-				-- RSA.modulus --> {
-						val pkstr = pubKey.getModulus.toString(16)
-						val mod = new StringOps(if (pkstr.size % 2 == 0) pkstr else " " + pkstr).
-							grouped(2).foldRight("")(_ + ":" + _).grouped(63).foldRight("")(_+"\n"+_)
-						mod^^CERT.hex
+			bnode.a( CERT.RSAPublicKey)
+				-- CERT.modulus --> {
+						val mod = pubKey.getModulus.toByteArray.dropWhile(_ == 0).map("%02X" format _).mkString
+						mod^^XSD.hexBinary
 					  }
-				-- RSA.public_exponent --> ( pubKey.getPublicExponent.toString^^CERT.int_  )
-			   -- CERT.base64der --> pubKeyPem
+				-- CERT.exponent --> ( pubKey.getPublicExponent.toString^^XSD.int_  )
 			)
 
 		val serviceGraph = (
@@ -122,6 +120,16 @@ class IdentityProvider extends Logging {
 
 	}
 
+
+  def trySome[T](body: => T): Option[T] =
+    try {
+      val res = body;
+      if (res == null) None else Option(res)
+    } catch {
+      case _ => None
+    }
+
+
 	/**
 	 * finds the public and private key to be used for this service
 	 *
@@ -131,39 +139,40 @@ class IdentityProvider extends Logging {
 	 */
 
 	protected def activate(context: ComponentContext) {
-		try {
-			val bundleContext = context.getBundleContext
-			val https = bundleContext.getProperty("org.osgi.service.http.secure.enabled")
-			if (https != null && "true".equals(https)) {
-				val store: KeyStore = getServerCertKeyStore(bundleContext)
-				val keypairs = for (alias <- store.aliases()
-				                    if store.isKeyEntry(alias);
-				                    key = store.getKey(alias, getKeyStorePassword(bundleContext).toCharArray)
-					                 if key.isInstanceOf[RSAPrivateKey])
-					yield new KeyPair(
-						key.asInstanceOf[RSAPrivateKey],
-						store.getCertificate(alias)
-						)
-				if (!keypairs.hasNext) {
-					logger.error("Won't be able to sign webid References")
-				} else {
-					keyPair = keypairs.next()
-					if (keypairs.hasNext) {
-						logger.warn("More than one key pair available for signing. Could lead to random signing behavior " +
-						"between restarts")
-					}
-				}
-			} else {
-				logger.warn("Cannot activate foaf+ssl Identity Provider. Server secure port needs to be enabled")
-			}
-		}
+    val bundleContext = context.getBundleContext
+    val https = bundleContext.getProperty("org.osgi.service.http.secure.enabled")
+    if (https != null && "true".equals(https)) {
+      val store: KeyStore = getServerCertKeyStore(bundleContext)
+      val pass = getKeyStorePassword(bundleContext)
+      val keypairs =  for (alias <- store.aliases().toList
+                           if store.isKeyEntry(alias);
+                           key = store.getKey(alias, pass.toCharArray)
+                           if key.isInstanceOf[RSAPrivateKey])
+      yield new KeyPair(
+          key.asInstanceOf[RSAPrivateKey],
+          store.getCertificate(alias)
+        )
+      if (keypairs.size >0) {
+        keyPair = keypairs.head
+        if (keypairs.size > 1) {
+          logger.warn("More than one key pair available for signing. Could lead to random signing behavior " +
+            "between restarts")
+        }
+      } else {
+        logger.error("Won't be able to sign webid References")
+      }
+    }
+  }
 
 
 
-	}
+
 
 	/**
+   * //this does not seem to work btw, or not very reliably.
+   *
 	 * server request of client logout using TLS
+   *
 	 * @param uriInfo path info for this request
 	 * @param headers of the request for the Referer field
 	 */

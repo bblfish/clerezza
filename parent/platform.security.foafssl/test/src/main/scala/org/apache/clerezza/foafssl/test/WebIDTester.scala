@@ -28,7 +28,7 @@ import org.slf4j.{LoggerFactory, Logger}
 import java.security.interfaces.RSAPublicKey
 import org.apache.clerezza.rdf.core._
 import access.NoSuchEntityException
-import impl.{SimpleMGraph, PlainLiteralImpl, TypedLiteralImpl}
+import impl.{SimpleMGraph, PlainLiteralImpl}
 import org.apache.clerezza.platform.security.auth.WebIdPrincipal
 import org.apache.clerezza.foafssl.auth.{WebIDClaim, Verification, X509Claim}
 import java.util.Date
@@ -36,14 +36,12 @@ import serializedform.Serializer
 import java.io.ByteArrayOutputStream
 import javax.security.auth.Subject
 import scala.collection.mutable
-import scala.collection.immutable
-import collection.JavaConversions._
 import org.apache.clerezza.platform.users.WebIdGraphsService
 import org.apache.clerezza.rdf.scala.utils._
 import org.apache.clerezza.foafssl.ontologies._
 import collection.JavaConversions._
 import java.security.{PublicKey, PrivilegedAction, AccessController}
-import org.apache.commons.codec.binary.Base64
+import java.math.BigInteger
 
 /**
  * implementation of (very early) version of test server for WebID so that the following tests
@@ -188,8 +186,8 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 	sommer.addMapper(new ClassMap[X509Claim]() {
 		def map(x509c: X509Claim, sommer: Sommer): GraphNode =
 				( bnode.a(CERT.Certificate)
-		          -- CERT.base64der --> new String(Base64.encodeBase64Chunked(x509c.cert.getEncoded()),"UTF-8")
-					 -- CERT.principal_key -->> sommer.map(ClassObject(x509c.cert.getPublicKey))
+//		          -- CERT.base64der --> new String(Base64.encodeBase64Chunked(x509c.cert.getEncoded()),"UTF-8")
+//					 -- CERT.principal_key -->> sommer.map(ClassObject(x509c.cert.getPublicKey))
 					 -- LOG.semantics --> ( bnode -- LOG.includes -->> x509c.webidclaims.flatMap(c=>sommer.map(ClassObject(c))))
 				)
 	})
@@ -208,9 +206,9 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 				case rsa: RSAPublicKey =>
 					 val mod =rsa.getModulus.toString(16)
 					 val nicemod = mod.grouped(2).grouped(40).map(_.mkString(" ")).mkString("\n")
-					 (bnode.a(RSA.RSAPublicKey)
-						-- RSA.modulus --> (nicemod^^CERT.hex )
-						-- RSA.public_exponent --> (rsa.getPublicExponent.toString(10)^^CERT.int_ )
+					 (bnode.a(CERT.RSAPublicKey)
+						-- CERT.modulus --> (nicemod^^XSD.hexBinary )
+						-- CERT.exponent --> (rsa.getPublicExponent.toString(10)^^XSD.int_ )
 						)
 				case other => (
 					bnode.a(CERT.PublicKey)
@@ -397,22 +395,22 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 		val profileXst = create(TEST.profileGet, claim.webId)
 
 		sem match {
-			case Some(profile) => {
-				if (profile.getGraph.size() > 0) {
-					profileXst.result("Profile was fetched. The information about when this was done is not yet very detailed" +
-						" in Clerezza.", passed)
-					val results = testKeys(profile /- CERT.identity)
+			case Some(wid) => {
+				if (wid.getGraph.size() > 0) {
+          profileXst.result("Profile was fetched. The information about when this was done is not yet very detailed" +
+            " in Clerezza.", passed)
+          val results = testKeys(wid / CERT.key)
 
-		         val allKeysGood = create(TEST.profileAllKeysWellFormed, claim.webId)
+          val allKeysGood = create(TEST.profileAllKeysWellFormed, claim.webId)
 
-					results.fold(true)((a,b)=>a & b) match {
-						case true =>
-							allKeysGood.result("All keys were found to be good in this profile",passed)
-						case false =>
-							allKeysGood.result("Some keys were found problematic. This is not necessarily fatal.",failed)
-					}
+          results.fold(true)((a, b) => a & b) match {
+            case true =>
+              allKeysGood.result("All keys were found to be good in this profile", passed)
+            case false =>
+              allKeysGood.result("Some keys were found problematic. This is not necessarily fatal.", failed)
+          }
 
-				} else {
+        } else {
 					profileXst.result("Profile seems to have been fetched but it contains no machine readable information", cantTell)
 				}
 
@@ -436,146 +434,35 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 		var result = false
 
 		modulusNode! match {
-			case ref: NonLiteral => {
-				asrtKeyModulusLit.result("the modulus of this key is not described directly as" +
-					" a literal. It is currently the preferred practice.", failed)
-				val hex = modulusNode / CERT.hex
-				if (hex.size == 0) {
-					asrtKeyModulusOldFunc.result("no hexadecimal value for the modulus found", failed)
-				} else if (hex.size > 1) {
-					asrtKeyModulusOldFunc.result((hex.size - 1) + " too many hexadecimal values for " +
-						"the modulus found. 1 is enough. If the numbers don't end up matching this is very likely" +
-						" to cause random behavior ", failed)
-				} else {
-					asrtKeyModulusOldFunc.result("one hex value for modulus", EARL.passed)
-					val kmres = asrtKeyMod.result
-					hex(0) ! match {
-						case refh: NonLiteral => {
-							asrtKeyMod.result("The modulus is using old notation and it's hex is not " +
-								"a literal. Going further would require reasoning engines which it is currently unlikely" +
-								"many sites have access to.", failed)
-						}
-						case lith: Literal => {
-							lith match {
-								case plainLit: PlainLiteral => {
-									if (plainLit.getLanguage != null)
-										kmres("keymodulus exists and is parseable", passed)
-									else
-										kmres("keymodulus exists and is parseable, but has a language tag", passed)
-									result = true
-								}
-								case typedLit: TypedLiteral => {
-									if (typedLit.getDataType == null ||
-										XSD.string == typedLit.getDataType) {
-										kmres("keymodulus exists and is parseable", passed)
-										result = true
-									} else {
-										kmres("keymodulus exists but does not have a string type", failed)
-									}
-								}
-								case lit => {
-									// cert:hex cannot be mistyped, since anything that is odd in the string is
-									//removed
-									kmres("keymodulus exists and is parseable", passed)
-									result = true
-								}
-							}
-						}
-					}
-				}
-
-			}
+			case ref: NonLiteral =>
+				asrtKeyModulusLit.result("the modulus of this key is not a literal. It should be a xsd:hexBinary", failed)
 			case numLit: Literal => {
 				val reskeyModLit = asrtKeyModulusLit.result
 				numLit match {
 					case tl: TypedLiteral => tl.getDataType match {
-						case CERT.int_ => {
-							try {
-								BigInt(tl.getLexicalForm)
-								reskeyModLit("Modulus is of type cert:int. It parsed ok.", passed, tl)
-								result = true
-							} catch {
-								case e: NumberFormatException => {
-									reskeyModLit("Modulus cert:int failed to parse as one", failed, tl)
-								}
-							}
+						case XSD.hexBinary => {
+              result = !tl.getLexicalForm.startsWith("00")
+              if (!result) {
+                reskeyModLit("Modulus is of type xsd:hexBinary, but it had a few leading 00. see the cert:modulus " +
+                  " definition to see why this is a problem",failed,tl)
+              } else {
+                result = new BigInteger(tl.getLexicalForm,16).compareTo(BigInteger.ZERO)>0
+                if (result)
+  							  reskeyModLit("Modulus is of type xsd:hexBinary. It will always parse to a positive number.", passed, tl)
+                else
+                  reskeyModLit("Modulus is negative! It must be a positive number!",failed,tl)
+              }
 						}
-						case CERT.decimal => {
-							//todo: need to add cert:decimal parsing flexibility to ontology
-								reskeyModLit("Modulus is of type cert:decimal. It always parses ok", passed, tl)
-								result = true
+						case XSD.base64Binary => reskeyModLit("Base 64 binaries would be ok, but are currently out of scope because" +
+              " we are waiting for the SPARQL group to specify that they are equivalent to hexBinaries. Until they do it will be too" +
+              " problematic, as keys that work on one system may not work on another, or if they did our queries would come to be too " +
+              " complex.", failed, tl)
+						case _ => {
+               reskeyModLit("the modulus is not of type xsd:hexBinary ( not even of type xsd:base64Binary!)" +
+                 " It is of type "+tl, failed, tl )
 						}
-						case CERT.hex => {
-							result = true
-							reskeyModLit("Modulus is of type cert:hex. It will always parse to a positive number.", passed, tl)
-						}
-						case XSD.int_ => {
-							try {
-								BigInt(tl.getLexicalForm)
-								reskeyModLit("Modulus is of type xsd:int. It parsed but it is certainly too small for " +
-									"a modulus", failed)
-							} catch {
-								case e: NumberFormatException => {
-									reskeyModLit("Modulus cert:decimal failed to parse", failed, tl)
-								}
-							}
-						}
-						case XSD.base64Binary => reskeyModLit("Base 64 binaries are not numbers. If you wish to have " +
-							"a base64 integer notation let the WebId Group know. We can define one easily.", failed, tl)
-						case XSD.hexBinary => reskeyModLit("Base hex binary literals are not a numbers. If you wish to have a hex " +
-							" integer notation use the " + CERT.hex +
-							" relation. It is easier for people to write out.", failed, tl)
-						case XSD.nonNegativeInteger => {
-							try {
-								val bi = BigInt(tl.getLexicalForm)
-								if (bi >= 0) {
-									reskeyModLit("Modulus is declared to be of type non-negative integer and it is", passed, tl)
-									result = true
-								} else {
-									reskeyModLit("Modulus is declared to be of type non-negative integer but it is negative", failed, tl)
-								}
-							} catch {
-								case e: NumberFormatException => {
-									reskeyModLit("Modulus xsd:int is very likely too short a number for a modulus. It also " +
-										"failed to parse as one", failed, tl)
-								}
-							}
-
-						}
-						case XSD.integer => {
-							try {
-								BigInt(tl.getLexicalForm)
-								reskeyModLit("Modulus is of type xsd:integer. It parsed.", passed, tl)
-								result = true
-							} catch {
-								case e: NumberFormatException => {
-									reskeyModLit("Modulus xsd:integer is failed to parse", failed, tl)
-								}
-							}
-
-						}
-						case XSD.positiveInteger => {
-							try {
-								val bi = BigInt(tl.getLexicalForm)
-								if (bi > 0) {
-									reskeyModLit("Modulus is declared to be of type positive integer and it is", passed, tl)
-									result = true
-								} else if (bi == 0) {
-									reskeyModLit("Modulus is 0 which is certainly too small", failed, tl)
-								} else {
-									reskeyModLit("Modulus is declared to be of type positive integer but it is not", failed, tl)
-								}
-							} catch {
-								case e: NumberFormatException => {
-									reskeyModLit("Modulus xsd:positiveInteger failed to parse", failed, tl)
-								}
-							}
-
-						}
-						case littype => reskeyModLit("We don't know how to interpret numbers of type " + littype +
-							"It would be better to use either cert:hex or cert:int", cantTell, tl)
 					}
-					case lit: Literal => reskeyModLit("The literal needs to be of a number type, not a string", failed, lit)
+					case lit: Literal => reskeyModLit("The literal needs to be of xsd:hexBinar, not a plain string", failed, lit)
 				}
 			}
 
@@ -599,87 +486,22 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 
 		exponentNode! match {
 			case ref: NonLiteral => {
-				asrtKeyExpLit.result("the exponent of this key is not described directly as" +
-					" a literal. It is currently the preferred practice.", failed)
-				val decml = exponentNode / CERT.decimal
-				if (decml.size == 0) {
-					asrtKeyExpOldFunc.result("no decimal value for the exponent found", failed)
-				} else if (decml.size > 1) {
-					asrtKeyExpOldFunc.result((decml.size - 1) + " too many decimal values for " +
-						"the exponent found. 1 is enough. If the numbers don't end up matching this is very likely" +
-						" to cause random behavior ", failed)
-				} else {
-					asrtKeyExpOldFunc.result("one hex value for modulus", EARL.passed)
-					val kExpres = asrtKeyExp.result
-					decml(0) ! match {
-						case refh: NonLiteral => {
-							asrtKeyExp.result("The exponent is using old notation and it's cert:decimal relation is not " +
-								"to a literal. Going further would require reasoning engines which it is currently unlikely" +
-								"many sites have access to.", failed)
-						}
-						case lith: Literal => {
-							lith match {
-								case plainLit: PlainLiteral => {
-									if (plainLit.getLanguage != null)
-										kExpres("key exponent exists and is parseable", passed)
-									else
-										kExpres("key exponent exists and is parseable, but has a language tag", passed)
-									result = true
-								}
-								case typedLit: TypedLiteral => {
-									if (typedLit.getDataType == null ||
-										XSD.string == typedLit.getDataType) {
-										kExpres("keymodulus exists and is parseable", passed)
-										result = true
-									} else {
-										kExpres("keymodulus exists but does not have a string type", failed)
-									}
-								}
-								case lit => {
-									//todo: can cert:int not be mistyped?
-									kExpres("keymodulus exists and is parseable", passed)
-								}
-							}
-						}
-					}
-				}
-
+				asrtKeyExpLit.result("the exponent of this key is not described as a typed literal. It should be.", failed)
 			}
 			case numLit: Literal => {
 				val reskeyExpLit = asrtKeyExpLit.result
 				numLit match {
 					case tl: TypedLiteral => tl.getDataType match {
-						case CERT.int_ => {
-							try {
-								BigInt(tl.getLexicalForm)
-								reskeyExpLit("Exponent is of type cert:int. It parsed ok.", passed, tl)
-								result = true
-							} catch {
-								case e: NumberFormatException => {
-									reskeyExpLit("Exponent cert:int failed to parse as one", failed, tl)
-								}
-							}
-						}
 						case CERT.hex => {
 							reskeyExpLit("Exponent is of type cert:hex. It will always parse to a positive number.", passed, tl)
 							result = true
 						}
-						case CERT.decimal => {
-							try {
-								BigInt(tl.getLexicalForm)
-								reskeyExpLit("Exponent is of type xsd:int. It parsed ok.", passed,tl)
-								result = true
-							} catch {
-								case e: NumberFormatException => {
-									reskeyExpLit("Exeponent of type cert:decimal failed to parse", failed, tl)
-								}
-							}
-						}
-						case XSD.base64Binary => reskeyExpLit("Base 64 binaries are not numbers. If you wish to have " +
-							"a base64 integer notation let the WebId Group know. We can define one easily.", failed, tl)
-						case XSD.hexBinary => reskeyExpLit("Base hex binary literals are not a numbers. If you wish to have a hex " +
-							" integer notation use the " + CERT.hex +
-							" relation. It is easier for people to write out.", failed, tl)
+						case XSD.base64Binary => reskeyExpLit("the exponent is usually small enough that it was decided it should be" +
+              " defined as an integer, not as a binary. Modulus is defined as a binary, because there was no hexInteger " +
+              " or base64Integer notation.", failed, tl)
+						case XSD.hexBinary => reskeyExpLit("the exponent is usually small enough that it was decided it should be" +
+              " defined as an integer, not as a binary. Modulus is defined as a binary, because there was no hexInteger " +
+              " or base64Integer notation.", failed, tl)
 						case XSD.nonNegativeInteger => {
 							try {
 								val bi = BigInt(tl.getLexicalForm)
@@ -759,12 +581,12 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 			val asrtWffkey = create(TEST.profileWellFormedPubkey, keylit.getNode)
 
 
-			var claimsTobeRsaKey = pkey.hasProperty(RDF.`type`, RSA.RSAPublicKey)
+			var claimsTobeRsaKey = pkey.hasProperty(RDF.`type`, CERT.RSAPublicKey)
 
-			val mods = pkey / RSA.modulus
-			val exps = pkey / RSA.public_exponent
+			val mods = pkey / CERT.modulus
+			val exps = pkey / CERT.exponent
 
-			claimsTobeRsaKey = claimsTobeRsaKey || mods.size > 0 || exps.size > 0
+			claimsTobeRsaKey = claimsTobeRsaKey  || exps.size > 0
 
 			if (!claimsTobeRsaKey) {
 				asrtWffkey.result("Do not recognise the type of this key", cantTell)

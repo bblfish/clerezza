@@ -20,17 +20,23 @@
 package org.apache.clerezza.foafssl.auth
 
 import java.security.interfaces.RSAPublicKey
-import java.security.cert.CertificateException
-import java.io.ByteArrayOutputStream
-import org.apache.clerezza.rdf.core.serializedform.{SupportedFormat, Serializer}
-import org.apache.clerezza.rdf.utils.GraphNode
-import org.apache.clerezza.foafssl.ontologies.{RSA, CERT}
+import org.apache.clerezza.foafssl.ontologies.CERT
 import java.util.LinkedList
-import org.apache.clerezza.rdf.core._
 import org.apache.clerezza.rdf.scala.utils._
 import java.security.PublicKey
 import scala.None
 import org.apache.clerezza.platform.security.auth.WebIdPrincipal
+import org.apache.clerezza.rdf.core._
+import impl.TypedLiteralImpl
+import org.apache.clerezza.rdf.ontologies.XSD
+import java.math.BigInteger
+import org.slf4j.scala.Logging
+
+object WebIDClaim {
+  def hex(bytes: Array[Byte]): String = bytes.dropWhile(_ == 0).map("%02X" format _).mkString
+  val integerTypes = Set(XSD.integer,XSD.int_,XSD.positiveInteger, XSD.nonNegativeInteger)
+}
+
 
 /**
  * An X509 Claim maintains information about the proofs associated with claims
@@ -42,30 +48,13 @@ import org.apache.clerezza.platform.security.auth.WebIdPrincipal
  * @author bblfish
  * @created 30/03/2011
  */
-class WebIDClaim(val webId: UriRef, val key: PublicKey) {
+class WebIDClaim(val webId: UriRef, val key: PublicKey) extends Logging {
+   import WebIDClaim._
 
-	import X509Claim._
-
-	val errors = new LinkedList[java.lang.Throwable]()
+  val errors = new LinkedList[java.lang.Throwable]()
 
 	lazy val principal = new WebIdPrincipal(webId)
 	var verified = Verification.Unverified
-
-	/*private lazy val selectQuery = {
-		  val query = """PREFIX cert: <http://www.w3.org/ns/auth/cert#>
-		  PREFIX rsa: <http://www.w3.org/ns/auth/rsa#>
-		  SELECT ?m ?e ?mod ?exp
-		  WHERE {
-		  [] cert:identity ?webid ;
-		  rsa:modulus ?m ;
-		  rsa:public_exponent ?e .
-		  OPTIONAL { ?m cert:hex ?mod . }
-		  OPTIONAL { ?e cert:decimal ?exp . }
-		  }"""
-		  queryParser.parse(query).asInstanceOf[SelectQuery]
-		  }*/
-
-
 
 	/**
 	 * verify this claim
@@ -104,53 +93,39 @@ class WebIDClaim(val webId: UriRef, val key: PublicKey) {
 
 	def verify(tc: TripleCollection): Option[WebIDVerificationError] = {
 		key match {
-			case k: RSAPublicKey => verify(k, tc);
+			case k: RSAPublicKey => if (verify(k, tc)) return None else Some(new WebIDVerificationError("No matching key in profile"))
 			case x => Some(new WebIDVerificationError("Unsupported key format "+x.getClass) )
 		}
 	}
 
-	private def verify(publicKey: RSAPublicKey, tc: TripleCollection): Option[WebIDVerificationError] = {
-		val publicKeysInGraph = getPublicKeysInGraph(tc)
-		if (publicKeysInGraph.size==0) return Some(new WebIDVerificationError("No public keys found in WebID Profile for "+webId.getUnicodeString))
-		val publicKeyTuple = (new BigInt(publicKey.getModulus), new BigInt(publicKey.getPublicExponent))
-		val result = publicKeysInGraph.contains(publicKeyTuple)
-		if (logger.isDebugEnabled) {
-			if (!result) {
-				val baos = new ByteArrayOutputStream
-				Serializer.getInstance.serialize(baos, tc, SupportedFormat.TURTLE);
-				logger.debug("no matching key in: \n{}", new String(baos.toByteArray));
-				logger.debug("the public key is not among the " +
-					publicKeysInGraph.size + " keys in the profile graph of size " +
-					tc.size)
-				logger.debug("PublicKey: " + publicKeyTuple)
-				publicKeysInGraph.foreach(k => logger.debug("PublikKey in graph: " + k))
-			}
-		}
-		if (result) return None
-		else return Some(new WebIDVerificationError("No matching keys found in WebID Profile"))
-	}
+  /**
+   * SPARQL deals with datatype implications, or should. So writing the query in SPARQL would be a lot
+   * shorter.
+   */
+	private def verify(publicKey: RSAPublicKey, tc: TripleCollection): Boolean = {
+    import WebIDClaim.hex
+    val modulusLit = new TypedLiteralImpl(hex(publicKey.getModulus.toByteArray), XSD.hexBinary)
+    val id = new RichGraphNode(modulusLit,tc);
+//    Serializer.getInstance().serialize(System.out,tc,"text/turtle")
 
-	private def getPublicKeysInGraph(tc: TripleCollection): Array[(BigInt, BigInt)] = {
-		import scala.collection.JavaConversions._
-		val publicKeys = for (t <- tc.filter(null, CERT.identity, webId)) yield {
-			t.getSubject
-		}
-		(for (p <- publicKeys) yield {
-			val node = new GraphNode(p, tc)
-			val modulusRes = node / RSA.modulus
-			val modulus = intValueOfResource(modulusRes) match {
-				case Some(x) => x
-				case _ => BigInt(0)
-			}
-			val exponentRes = node / RSA.public_exponent
-			val exponent = intValueOfResource(exponentRes) match {
-				case Some(x) => x
-				case _ => BigInt(0)
-			}
-			(modulus, exponent)
-		}).toArray
-	}
+    // test if node is the exponent in the public key
+    def exponentOk(exp: RichGraphNode): Boolean = exp.getNode match {
+        case lit: TypedLiteral if  integerTypes contains lit.getDataType => try {
+          val bi = new BigInteger(lit.getLexicalForm.trim())
+          bi.equals(publicKey.getPublicExponent)
+        } catch {
+          case ex => logger.warn("problem comparing exponents...", ex)
+          false
+        }
+        case _ => false
+      }
 
+    (id/-CERT.modulus) exists  { key =>
+      if (tc.filter(webId,CERT.key,key.getNode).hasNext) {  //then we just need to check the exponent ...
+         (key/CERT.exponent) exists { exponentOk(_) }
+       } else false
+    }
+  }
 
 	def canEqual(other: Any) = other.isInstanceOf[WebIDClaim]
 

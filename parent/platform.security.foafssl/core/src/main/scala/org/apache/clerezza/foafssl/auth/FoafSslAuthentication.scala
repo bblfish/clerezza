@@ -36,7 +36,7 @@ import org.apache.clerezza.rdf.scala.utils._
 
 
 object FoafSslAuthentication {
-  final private val logger = LoggerFactory.getLogger(classOf[FoafSslAuthentication])
+  final private val logger = LoggerFactory.getLogger(FoafSslAuthentication.getClass)
 
   final val ANONYMOUS: String = "anonymous"
 
@@ -84,7 +84,7 @@ class FoafSslAuthentication extends WeightedAuthenticationMethod {
 		  return true
 	  } else {
 		  return false
-  }
+    }
   }
 
   def addAgentToSystem(id: WebIDClaim) {

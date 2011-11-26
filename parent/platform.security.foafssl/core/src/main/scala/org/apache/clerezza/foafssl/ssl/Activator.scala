@@ -65,7 +65,7 @@ object Activator {
 		keyStoreLoader.setKeyStoreType(getKeyStoreType(bundleContext))
 		keyStoreLoader.setKeyStorePath(getKeyStorePath(bundleContext))
 		keyStoreLoader.setKeyStorePassword(getKeyStorePassword(bundleContext))
-        return keyStoreLoader.loadKeyStore();
+      return keyStoreLoader.loadKeyStore();
     }
 
 }
@@ -88,13 +88,13 @@ class Activator() {
       val http = bundleContext.getProperty("org.osgi.service.http.secure.enabled")
       if (http!=null && "true".equals(http)) {
         val sslContextFactory = new X509SSLContextFactory(
-                    getServerCertKeyStore(bundleContext),
-			        getKeyStorePassword(bundleContext),
-                    getServerCertKeyStore(bundleContext));//getCaKeyStore());
-            sslContextFactory
-                    .setTrustManagerWrapper(x509TrustManagerWrapperService);
-	     val sslContext = sslContextFactory.buildSSLContext("TLS")
-	     x509TrustManagerWrapperService.setSslContext(sslContext)
+          getServerCertKeyStore(bundleContext),
+          getKeyStorePassword(bundleContext),
+          getServerCertKeyStore(bundleContext)); //getCaKeyStore());
+        sslContextFactory
+          .setTrustManagerWrapper(x509TrustManagerWrapperService);
+        val sslContext = sslContextFactory.buildSSLContext("TLS")
+        x509TrustManagerWrapperService.setSslContext(sslContext)
 
         bundleContext.registerService(classOf[SSLContext].getName, sslContext, new Properties())
         println("Registered SSLContext+")

@@ -27,13 +27,12 @@ import org.apache.clerezza.platform.security.UserUtil
 import org.apache.clerezza.ssl.keygen.CertSerialisation
 import org.apache.clerezza.ssl.keygen.Certificate
 import org.apache.clerezza.foafssl.ontologies.CERT
-import org.apache.clerezza.foafssl.ontologies.RSA
 import org.apache.clerezza.jaxrs.utils.RedirectUtil
 import org.apache.clerezza.jaxrs.utils.TrailingSlash
 import org.apache.clerezza.platform.config.PlatformConfig
 import org.apache.clerezza.platform.usermanager.UserManager
 import org.apache.clerezza.rdf.core._
-import impl.{SimpleMGraph, TripleImpl}
+import impl.{TypedLiteralImpl, SimpleMGraph, TripleImpl}
 import org.apache.clerezza.platform.Constants
 import access.TcManager
 import org.apache.clerezza.rdf.utils.GraphNode
@@ -55,6 +54,7 @@ import org.apache.clerezza.platform.users.{WebIdInfo, WebIdGraphsService}
 import org.apache.clerezza.rdf.scala.utils._
 
 object ProfilePanel {
+  def hex(bytes: Array[Byte]) = new TypedLiteralImpl(bytes.dropWhile(_ == 0).map("%02X" format _).mkString,XSD.hexBinary)
 	//val webIdTemplate = classOf[ProfilePanel].getAnnotation(classOf[Path]).value+"#me"
 
 
@@ -288,12 +288,13 @@ class ProfilePanel extends Logging {
 		) {
 			 new context(webIdInfo.localPublicUserData) {
 				val certNode = (
-					(bnode a RSA.RSAPublicKey)
-							-- CERT.identity --> webidRef
-					      -- RSA.modulus --> modulus
-					      -- RSA.public_exponent --> publicExponent
-					      -- DC.date --> cert.getStartDate)
-				if (comment != null && comment.length > 0) {
+					bnode.a(CERT.RSAPublicKey)
+					      -- CERT.modulus --> ProfilePanel.hex(modulus.toByteArray)
+					      -- CERT.exponent --> publicExponent
+					      -- DC.date --> cert.getStartDate
+          )
+         webidRef -- CERT.key --> certNode
+         if (comment != null && comment.length > 0) {
 					certNode -- RDFS.comment --> comment
 				}
 			}
@@ -306,32 +307,29 @@ class ProfilePanel extends Logging {
 	@Path("deletekey")
 	def deleteKey(@Context uriInfo: UriInfo,
 	              @FormParam("webId") webId: UriRef,
-	              @FormParam("keyhash") keys: List[String]): Response = {
-		val webIDInfo = webIdGraphsService.getWebIdInfo(webId)
+	              @FormParam("keyhash") hashes: List[String]): Response = {
+    import scala.collection.JavaConversions._
+
+    val webIDInfo = webIdGraphsService.getWebIdInfo(webId)
 		val agent: GraphNode = new GraphNode(webId, webIDInfo.localPublicUserData)
-		var subjects: Iterator[GraphNode] = agent.getSubjectNodes(CERT.identity)
-		import scala.util.control.Breaks._
-		breakable {
-			import scala.collection.JavaConversions._
-			//to for loop through iterators
-			for (nl <- subjects) {
-				var modulusIt: Iterator[Resource] = nl.getObjects(RSA.modulus)
-				if (!modulusIt.hasNext) break
-				var modLit: Resource = modulusIt.next
-				if (modulusIt.hasNext) logger.warn("data error, a modulus too many in cert for " + webId)
-				if (!(modLit.isInstanceOf[TypedLiteral])) {
-					logger.warn("a public key has a modulus that is not a literal for " + webId)
-					break
-				}
-				var modulus: BigInteger = LiteralFactory.getInstance.createObject(classOf[BigInteger], modLit.asInstanceOf[TypedLiteral])
-				for (key <- keys) {
-					if (modulus.hashCode == Integer.decode(key)) {
-						nl.deleteNodeContext
-						break
-					}
-				}
-			}
-		}
+		val hashn : scala.List[Int] = hashes.toList.map(hashStr=>Integer.decode(hashStr).intValue())
+
+    {
+      def isIt(mod: BigInteger): Boolean = hashn.exists(_ == mod.hashCode())
+      def hasAToBeDeletedModulus(key: RichGraphNode): Boolean =
+          (key / CERT.modulus).exists(rgn => {
+            val num = rgn.getNode match {
+              case lit: TypedLiteral if lit.getDataType == XSD.hexBinary => new BigInteger(lit.getLexicalForm, 16)
+              case _ => BigInteger.ZERO
+            }
+            isIt(num)
+          })
+
+      val keys = agent / CERT.key
+      val goodKeys = keys.filter(hasAToBeDeletedModulus)
+      goodKeys.foreach(_.deleteNodeContext())
+    }
+
 		return RedirectUtil.createSeeOtherResponse("../profile", uriInfo)
 	}
 
