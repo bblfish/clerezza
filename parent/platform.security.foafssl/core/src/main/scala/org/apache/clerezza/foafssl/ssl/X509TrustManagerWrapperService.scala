@@ -109,10 +109,6 @@ class X509TrustManagerWrapperService() extends X509TrustManagerWrapper with Logg
 							logger.info("new connection started")
 						}
 					}
-					val webIdUriRefs = X509Claim.getClaimedWebIds(chain(0))
-					if (webIdUriRefs.isEmpty) {
-						trustManager.checkClientTrusted(chain, authType)
-					}
 					return
 				} catch {
 					case ce: CertificateException => throw ce

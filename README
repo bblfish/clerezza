@@ -3,4 +3,40 @@ This branch is geared towards Social Web development as explained by http://bblf
 Please clone the github repository and notify https://github.com/bblfish/clerezza
 of changes you want integrated.
 
-See the INSTALL file for information on how to build and run.
+COMPILING
+=========
+
+We are using Java 7
+
+$ git clone https://github.com/bblfish/clerezza.git
+$ cd parent
+$ export MAVEN_OPTS='-XX:MaxPermSize=248M -Xmx512m -XX:-UseSplitVerifier' 
+$ mvn clean install -Dmaven.test.skip=true -Dgpg.skip=true
+
+RUNNING in HTTPS mode
+=====================
+
+You can then change into one of the platform.launcher.{tdb,sesame,mulgara} directories. The following is valid for Jena's TDB database. 
+
+$ bin/run.sh
+
+will run the project in the run directory after starting it in WebID enabled HTTPS mode with certificate requests in WANT mode. 
+
+To run in debug mode add the following two parameters
+
+  -Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005
+
+The above will start a https://webid.info/ enabled clerezza on port 8443  
+
+  You need to have created yourself a keystore. If you want the keystore to function with the major browsers without error messages it needs to have been signed by a certification authority.
+
+NOTES
+=====
+
+1. You can get free CA server certificates for your server from https://www.startssl.com/
+2. The server as set up will request a client certificate from the client automatically if he has one.
+  To make this more userfriendly will require improving the jetty TLS layer or replacing it with netty.
+  That it can be done is shown by the netty server at https://dvcs.w3.org/hg/read-write-web/ 
+
+
+
