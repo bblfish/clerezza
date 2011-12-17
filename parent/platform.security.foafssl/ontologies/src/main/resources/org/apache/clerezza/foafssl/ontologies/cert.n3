@@ -239,6 +239,12 @@
    rdfs:domain :RSAPublicKey;
    rdfs:range xsd:nonNegativeInteger .
 
+:base64der a rdf:Property; 
+    vs:term_status "unstable";
+    rdfs:label "base64 der encoding"@en;
+    rdfs:comment "base64 encoding of binary thing like X509Certs"@en .
+
+
 :privateExponent a owl:DatatypeProperty ;
     rdfs:label "private"@en;
 	rdfs:isDefinedBy <cert#>;

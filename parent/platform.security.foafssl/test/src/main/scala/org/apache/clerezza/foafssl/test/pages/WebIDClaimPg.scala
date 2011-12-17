@@ -105,13 +105,10 @@ class XhtmlWebIDClaimPg(arguments: XmlResult.Arguments, testOnt: Graph) extends 
 		<p>{testView(TEST.pubkeyRSAExponent) }</p>
 		<p>{testView(TEST.pubkeyRSAExponentFunctional) }</p>
 		<p>{testView(TEST.pubkeyRSAExponentLiteral) }</p>
-    <!--
 		<h2>Certificate Sent</h2>
 		<p>You sent us <a name="cert">the following certificate</a> in PEM format</p>
 		<pre>{new RichGraphNode(CERT.Certificate,res.getGraph)/-RDF.`type`/CERT.base64der*}
 		</pre>
-		-->
-
 		<h2>Further Reference</h2>
 	  <p>For very detailed test information to send to support <a href="WebId/n3">download this n3 file</a>.</p>
   </div>
