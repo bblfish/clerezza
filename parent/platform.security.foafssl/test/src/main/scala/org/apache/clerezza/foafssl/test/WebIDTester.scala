@@ -42,6 +42,7 @@ import org.apache.clerezza.foafssl.ontologies._
 import collection.JavaConversions._
 import java.security.{PublicKey, PrivilegedAction, AccessController}
 import java.math.BigInteger
+import org.apache.commons.codec.binary.Base64
 
 /**
  * implementation of (very early) version of test server for WebID so that the following tests
@@ -186,7 +187,7 @@ class CertTests(subj: Subject, webIdGraphsService: WebIdGraphsService) extends A
 	sommer.addMapper(new ClassMap[X509Claim]() {
 		def map(x509c: X509Claim, sommer: Sommer): GraphNode =
 				( bnode.a(CERT.Certificate)
-//		          -- CERT.base64der --> new String(Base64.encodeBase64Chunked(x509c.cert.getEncoded()),"UTF-8")
+		          -- CERT.base64der --> new String(Base64.encodeBase64Chunked(x509c.cert.getEncoded()),"UTF-8")
 //					 -- CERT.principal_key -->> sommer.map(ClassObject(x509c.cert.getPublicKey))
 					 -- LOG.semantics --> ( bnode -- LOG.includes -->> x509c.webidclaims.flatMap(c=>sommer.map(ClassObject(c))))
 				)

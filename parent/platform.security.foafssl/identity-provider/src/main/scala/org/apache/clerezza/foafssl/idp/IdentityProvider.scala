@@ -105,7 +105,7 @@ class IdentityProvider extends Logging {
 						mod^^XSD.hexBinary
 					  }
 				-- CERT.exponent --> ( pubKey.getPublicExponent.toString^^XSD.int_  )
-			  -- CERT.base64der --> pubKeyPem
+//			  -- CERT.base64der --> pubKeyPem
 			)
 
 		val serviceGraph = (
