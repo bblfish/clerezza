@@ -35,9 +35,9 @@ import org.apache.clerezza.rdf.core.access.TcManager
 import org.apache.clerezza.rdf.core.access.security.TcPermission
 import org.apache.clerezza.rdf.core.impl.SimpleMGraph
 import org.apache.clerezza.rdf.ontologies.PLATFORM
-import org.apache.clerezza.rdf.storage.web.WebProxy
 import org.apache.clerezza.rdf.utils.UnionMGraph
 import org.apache.clerezza.rdf.core.serializedform.{SupportedFormat, Parser}
+import org.apache.clerezza.rdf.storage.web.{Cache, WebProxy}
 
 /**
  * For agents with a Web-Id various graphs are available, these graphs are
@@ -204,7 +204,7 @@ class WebIdGraphsService {
 			val webId = uri
 
 			def forceCacheUpdate() = {
-				proxy.getGraph(profileDocumentUri)
+				proxy.getGraph(profileDocumentUri, Cache.ForceUpdate)
 			}
 		}
 
