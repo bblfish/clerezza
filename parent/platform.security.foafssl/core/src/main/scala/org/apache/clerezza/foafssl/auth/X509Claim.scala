@@ -45,7 +45,7 @@ object X509Claim {
     if (cert == null) Iterator.empty
     else cert.getSubjectAlternativeNames() match {
       case coll if (coll != null) => {
-        for (sanPair <- coll if (sanPair.get(0) == 6)) yield sanPair(1).asInstanceOf[String]
+        for (sanPair <- coll if (sanPair.get(0) == 6)) yield sanPair(1).asInstanceOf[String].trim()
       }.iterator
       case _ => Iterator.empty
     }
